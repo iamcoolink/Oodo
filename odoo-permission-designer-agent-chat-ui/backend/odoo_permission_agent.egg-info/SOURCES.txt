@@ -1,0 +1,8 @@
+pyproject.toml
+odoo_permission_agent.egg-info/PKG-INFO
+odoo_permission_agent.egg-info/SOURCES.txt
+odoo_permission_agent.egg-info/dependency_links.txt
+odoo_permission_agent.egg-info/requires.txt
+odoo_permission_agent.egg-info/top_level.txt
+permission_agent/__init__.py
+permission_agent/graph.py

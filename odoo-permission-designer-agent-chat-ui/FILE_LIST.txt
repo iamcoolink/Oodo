@@ -1,0 +1,13 @@
+frontend-overlay/src/app/page.tsx
+frontend-overlay/src/components/permission-designer/index.tsx
+frontend-overlay/src/components/permission-designer/types.ts
+frontend-overlay/src/components/permission-designer/mock-data.ts
+frontend-overlay/src/components/permission-designer/patch.ts
+frontend-overlay/src/components/permission-designer/codegen.ts
+backend/permission_agent/graph.py
+backend/permission_agent/__init__.py
+backend/langgraph.json
+backend/pyproject.toml
+backend/.env.example
+apply-overlay.ps1
+README_zh-CN.md

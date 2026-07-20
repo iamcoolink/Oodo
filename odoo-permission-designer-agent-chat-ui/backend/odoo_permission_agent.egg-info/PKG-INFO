@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: odoo-permission-agent
+Version: 0.1.0
+Summary: LangGraph backend for the Odoo permission visual designer
+Requires-Python: >=3.11
+Requires-Dist: langgraph>=1.0.0
+Requires-Dist: langchain>=1.0.0
+Requires-Dist: langchain-openai>=1.0.0
+Requires-Dist: langgraph-cli[inmem]>=0.4.0
