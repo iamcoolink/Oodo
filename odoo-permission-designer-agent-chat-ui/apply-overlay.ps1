@@ -15,4 +15,9 @@ New-Item -ItemType Directory -Path $target -Force | Out-Null
 Copy-Item -Path (Join-Path $overlay "src\components\permission-designer\*") `
           -Destination $target -Recurse -Force
 
+$threadTarget = Join-Path $AgentChatUiPath "src\components\thread"
+New-Item -ItemType Directory -Path $threadTarget -Force | Out-Null
+Copy-Item -Path (Join-Path $overlay "src\components\thread\index.tsx") `
+          -Destination (Join-Path $threadTarget "index.tsx") -Force
+
 Write-Host "Overlay installed. Run: cd $AgentChatUiPath; pnpm dev"

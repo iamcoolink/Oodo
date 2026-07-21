@@ -51,10 +51,11 @@ one fenced block in this format:
 ```
 
 CRITICAL: Use the exact "id" values from the CURRENT VISUAL DESIGN JSON above.
-- roleId must match a role "id" (e.g. "sales", "manager", "finance", "warehouse"), NOT the role name or technicalName.
+- roleId must match a role "id". When the user refers to a role by its Chinese name (e.g. "销售总监"), find the role whose "name" field equals that Chinese name, and use its "id".
 - modelId must match a model "id" (e.g. "partner", "sale_order", "invoice", "picking"), NOT the technicalName like "stock.picking" or the Chinese name.
 - fieldId must match a field "id" within that model.
 - transitionId must match a workflow transition "id".
+- If the user mentions a role/model/field that does not exist in the CURRENT VISUAL DESIGN, explain that it is missing and do NOT emit a permission_patch.
 
 Supported operations:
 - set_model_access(roleId, modelId, operation: read|create|write|unlink, value)
