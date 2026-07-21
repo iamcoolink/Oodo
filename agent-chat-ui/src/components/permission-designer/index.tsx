@@ -156,9 +156,22 @@ export function PermissionDesigner(): React.ReactNode {
     if (!patch) return;
 
     appliedMessageIdRef.current = lastMessage.id ?? null;
-    setProject((current) => applyPermissionPatch(current, patch));
-    toast.success("已应用聊天中的权限变更", {
-      description: patch.summary || `共执行 ${patch.operations.length} 项变更。`,
+    setProject((current) => {
+      const { project: nextProject, skipped } = applyPermissionPatch(
+        current,
+        patch,
+      );
+      if (skipped.length > 0) {
+        toast.warning("部分权限变更未生效", {
+          description: skipped.join("；"),
+        });
+      } else {
+        toast.success("已应用聊天中的权限变更", {
+          description:
+            patch.summary || `共执行 ${patch.operations.length} 项变更。`,
+        });
+      }
+      return nextProject;
     });
   }, [stream.messages]);
 

@@ -5,7 +5,7 @@ import os
 from typing import Any
 
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 
 
@@ -19,7 +19,7 @@ class PermissionState(MessagesState):
 
 
 MODEL_NAME = os.getenv("MODEL", "openai:gpt-5.5")
-model = init_chat_model(MODEL_NAME)
+model = init_chat_model(MODEL_NAME, streaming=False)
 
 SYSTEM_PROMPT = """
 You are an Odoo security architect embedded in a visual permission designer.
@@ -50,6 +50,12 @@ one fenced block in this format:
 }
 ```
 
+CRITICAL: Use the exact "id" values from the CURRENT VISUAL DESIGN JSON above.
+- roleId must match a role "id" (e.g. "sales", "manager", "finance", "warehouse"), NOT the role name or technicalName.
+- modelId must match a model "id" (e.g. "partner", "sale_order", "invoice", "picking"), NOT the technicalName like "stock.picking" or the Chinese name.
+- fieldId must match a field "id" within that model.
+- transitionId must match a workflow transition "id".
+
 Supported operations:
 - set_model_access(roleId, modelId, operation: read|create|write|unlink, value)
 - set_field_access(roleId, modelId, fieldId, value: hidden|readonly|editable|masked)
@@ -74,6 +80,8 @@ def permission_assistant(state: PermissionState) -> dict[str, list[BaseMessage]]
         )
     )
     response = model.invoke([context_message, *state["messages"]])
+    if isinstance(response, str):
+        response = AIMessage(content=response)
     return {"messages": [response]}
 
 
