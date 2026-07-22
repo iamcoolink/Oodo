@@ -240,7 +240,7 @@ export function Thread() {
       >
         <motion.div
           className={cn(
-            "relative flex min-w-0 flex-1 flex-col overflow-hidden",
+            "relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[#F9F9F9]",
             !chatStarted && "grid-rows-[1fr]",
           )}
           layout={isLargeScreen}
@@ -353,9 +353,9 @@ export function Thread() {
                   <div
                     ref={dropRef}
                     className={cn(
-                      "bg-muted relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl shadow-xs transition-all",
+                      "relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl border border-[#E9D5E6] bg-white shadow-sm transition-all",
                       dragOver
-                        ? "border-primary border-2 border-dotted"
+                        ? "border-[#714B67] border-2 border-dotted"
                         : "border border-solid",
                     )}
                   >
@@ -384,7 +384,7 @@ export function Thread() {
                             form?.requestSubmit();
                           }
                         }}
-                        placeholder="Type your message..."
+                        placeholder="输入您想调整的权限..."
                         className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
                       />
 
@@ -408,21 +408,21 @@ export function Thread() {
                           <Button
                             key="stop"
                             onClick={() => stream.stop()}
-                            className="ml-auto"
+                            className="ml-auto rounded-md bg-[#F5E6F0] px-5 text-[#714B67] shadow-sm transition-all hover:bg-[#EBD5E8]"
                           >
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                            Cancel
+                            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                            停止
                           </Button>
                         ) : (
                           <Button
                             type="submit"
-                            className="ml-auto shadow-md transition-all"
+                            className="ml-auto rounded-md bg-[#714B67] px-5 text-white shadow-sm transition-all hover:bg-[#5C3D54]"
                             disabled={
                               isLoading ||
                               (!input.trim() && contentBlocks.length === 0)
                             }
                           >
-                            Send
+                            发送
                           </Button>
                         )}
                       </div>

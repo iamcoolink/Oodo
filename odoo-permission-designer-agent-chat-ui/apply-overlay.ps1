@@ -20,4 +20,25 @@ New-Item -ItemType Directory -Path $threadTarget -Force | Out-Null
 Copy-Item -Path (Join-Path $overlay "src\components\thread\index.tsx") `
           -Destination (Join-Path $threadTarget "index.tsx") -Force
 
+$threadMessagesTarget = Join-Path $AgentChatUiPath "src\components\thread\messages"
+New-Item -ItemType Directory -Path $threadMessagesTarget -Force | Out-Null
+Copy-Item -Path (Join-Path $overlay "src\components\thread\messages\ai.tsx") `
+          -Destination (Join-Path $threadMessagesTarget "ai.tsx") -Force
+Copy-Item -Path (Join-Path $overlay "src\components\thread\messages\human.tsx") `
+          -Destination (Join-Path $threadMessagesTarget "human.tsx") -Force
+
+$appTarget = Join-Path $AgentChatUiPath "src\app"
+New-Item -ItemType Directory -Path $appTarget -Force | Out-Null
+Copy-Item -Path (Join-Path $overlay "src\app\layout.tsx") `
+          -Destination (Join-Path $appTarget "layout.tsx") -Force
+Copy-Item -Path (Join-Path $overlay "src\app\icon.svg") `
+          -Destination (Join-Path $appTarget "icon.svg") -Force
+Copy-Item -Path (Join-Path $overlay "src\app\icon1.png") `
+          -Destination (Join-Path $appTarget "icon1.png") -Force
+
+$iconsTarget = Join-Path $AgentChatUiPath "src\components\icons"
+New-Item -ItemType Directory -Path $iconsTarget -Force | Out-Null
+Copy-Item -Path (Join-Path $overlay "src\components\icons\langgraph.tsx") `
+          -Destination (Join-Path $iconsTarget "langgraph.tsx") -Force
+
 Write-Host "Overlay installed. Run: cd $AgentChatUiPath; pnpm dev"

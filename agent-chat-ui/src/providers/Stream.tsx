@@ -190,12 +190,13 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
             <div className="flex flex-col items-start gap-2">
               <LangGraphLogoSVG className="h-7" />
               <h1 className="text-xl font-semibold tracking-tight">
-                Agent Chat
+                Odoo ERP
               </h1>
             </div>
             <p className="text-muted-foreground">
-              Welcome to Agent Chat! Before you get started, you need to enter
-              the URL of the deployment and the assistant / graph ID.
+              Welcome to Odoo Permission Designer! Before you get started, you
+              need to enter the URL of the deployment and the assistant / graph
+              ID.
             </p>
           </div>
           <form

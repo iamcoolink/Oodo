@@ -367,13 +367,13 @@ export function PermissionDesigner(): React.ReactNode {
     <div className="flex h-full min-h-0 flex-col bg-slate-50 text-slate-900">
       <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white shadow-sm">
+          <div className="grid size-10 place-items-center rounded-xl bg-[#714B67] text-white shadow-sm">
             <ShieldCheck className="size-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="truncate text-base font-semibold">Odoo 权限与流程设计器</h1>
-              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">
+              <span className="rounded-full bg-[#F5E6F0] px-2 py-0.5 text-[11px] font-medium text-[#714B67]">
                 Odoo {project.odooVersion}
               </span>
             </div>
@@ -384,7 +384,7 @@ export function PermissionDesigner(): React.ReactNode {
           <button
             type="button"
             onClick={() => setFindingsOpen((open) => !open)}
-            className="relative inline-flex h-9 items-center gap-2 rounded-lg border bg-white px-3 text-sm hover:bg-slate-50"
+            className="relative inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm hover:bg-slate-50"
           >
             <AlertTriangle className="size-4" />
             检查
@@ -397,7 +397,7 @@ export function PermissionDesigner(): React.ReactNode {
           <button
             type="button"
             onClick={exportProject}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border bg-white px-3 text-sm hover:bg-slate-50"
+            className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm hover:bg-slate-50"
           >
             <Download className="size-4" />
             导出 JSON
@@ -405,7 +405,7 @@ export function PermissionDesigner(): React.ReactNode {
           <button
             type="button"
             onClick={() => importInputRef.current?.click()}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border bg-white px-3 text-sm hover:bg-slate-50"
+            className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm hover:bg-slate-50"
           >
             <Clipboard className="size-4" />
             导入 JSON
@@ -420,7 +420,7 @@ export function PermissionDesigner(): React.ReactNode {
           <button
             type="button"
             onClick={() => toast.success("设计已保存在浏览器状态中")}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-violet-600 px-3 text-sm font-medium text-white hover:bg-violet-700"
+            className="inline-flex h-9 items-center gap-2 rounded-md bg-[#714B67] px-3 text-sm font-medium text-white hover:bg-[#5C3D54]"
           >
             <Save className="size-4" />
             保存
@@ -455,7 +455,7 @@ export function PermissionDesigner(): React.ReactNode {
                 setSelectedUserId(userId);
                 if (user?.roleIds[0]) setSelectedRoleId(user.roleIds[0]);
               }}
-              className="h-8 rounded-lg border bg-white px-2 text-sm text-slate-800"
+              className="h-8 rounded-md border bg-white px-2 text-sm text-slate-800"
             >
               {project.users.map((user) => (
                 <option key={user.id} value={user.id}>
@@ -533,7 +533,7 @@ export function PermissionDesigner(): React.ReactNode {
 
       <footer className="flex h-9 shrink-0 items-center justify-between border-t bg-white px-4 text-xs text-slate-500">
         <div className="flex items-center gap-2">
-          <Bot className="size-3.5 text-violet-600" />
+          <Bot className="size-3.5 text-[#714B67]" />
           当前权限设计已作为 <code>permission_design</code> 上下文发送给左侧 LangGraph Agent
         </div>
         <div className="flex items-center gap-3">
@@ -545,7 +545,7 @@ export function PermissionDesigner(): React.ReactNode {
 
       {isAddRoleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-80 rounded-xl bg-white p-5 shadow-xl">
+          <div className="w-80 rounded-xl bg-white p-5 shadow-lg">
             <h3 className="text-base font-semibold">添加角色</h3>
             <div className="mt-4 space-y-3">
               <div>
@@ -555,7 +555,7 @@ export function PermissionDesigner(): React.ReactNode {
                   value={newRoleName}
                   onChange={(e) => setNewRoleName(e.target.value)}
                   placeholder="例如：销售总监"
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-violet-500"
+                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-[#714B67]"
                 />
               </div>
               <div>
@@ -565,7 +565,7 @@ export function PermissionDesigner(): React.ReactNode {
                   value={newRoleTechnicalName}
                   onChange={(e) => setNewRoleTechnicalName(e.target.value)}
                   placeholder="例如：group_sales_director"
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-violet-500"
+                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-[#714B67]"
                 />
               </div>
             </div>
@@ -580,7 +580,7 @@ export function PermissionDesigner(): React.ReactNode {
               <button
                 type="button"
                 onClick={handleAddRole}
-                className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm text-white hover:bg-violet-700"
+                className="rounded-lg bg-[#714B67] px-3 py-1.5 text-sm text-white hover:bg-[#5C3D54]"
               >
                 确认
               </button>
@@ -604,7 +604,7 @@ function TabButton(props: {
       onClick={props.onClick}
       className={`flex h-10 items-center gap-2 rounded-lg px-3 text-sm transition ${
         props.active
-          ? "bg-violet-50 font-medium text-violet-700"
+          ? "bg-[#F5E6F0] font-medium text-[#714B67]"
           : "text-slate-600 hover:bg-slate-50"
       }`}
     >
@@ -662,7 +662,7 @@ function AccessMap(props: {
     <div className="absolute inset-0 right-[320px] overflow-auto bg-[radial-gradient(circle_at_1px_1px,rgba(148,163,184,.28)_1px,transparent_0)] bg-[size:22px_22px]">
       <div className="sticky top-0 z-30 flex h-12 items-center justify-between border-b bg-white/90 px-4 backdrop-blur">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <Network className="size-4 text-violet-600" />
+          <Network className="size-4 text-[#714B67]" />
           角色—模型—字段有效权限图
         </div>
         <label className="relative">
@@ -671,7 +671,7 @@ function AccessMap(props: {
             value={props.query}
             onChange={(event) => props.onQueryChange(event.target.value)}
             placeholder="搜索模型或字段"
-            className="h-9 w-64 rounded-lg border bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400"
+            className="h-9 w-64 rounded-md border bg-white pl-9 pr-3 text-sm outline-none focus:border-[#B88AAE]"
           />
         </label>
       </div>
@@ -691,7 +691,7 @@ function AccessMap(props: {
                   key={`${role.id}-${model.id}`}
                   d={`M ${startX} ${startY} C ${startX + 55} ${startY}, ${endX - 70} ${endY}, ${endX} ${endY}`}
                   fill="none"
-                  stroke={selected ? "#7c3aed" : "#cbd5e1"}
+                  stroke={selected ? "#714B67" : "#cbd5e1"}
                   strokeWidth={selected ? 2.2 : 1.1}
                   strokeDasharray={access.write ? undefined : "5 5"}
                   opacity={selected ? 0.9 : 0.42}
@@ -709,7 +709,7 @@ function AccessMap(props: {
             <button
               type="button"
               onClick={props.onAddRoleClick}
-              className="rounded-md bg-violet-50 px-2 py-1 text-[10px] text-violet-600 hover:bg-violet-100"
+              className="rounded-md bg-[#F5E6F0] px-2 py-1 text-[10px] text-[#714B67] hover:bg-[#EBD5E8]"
             >
               + 添加
             </button>
@@ -719,7 +719,7 @@ function AccessMap(props: {
               key={role.id}
               className={`group relative w-full rounded-xl border p-3 text-left shadow-sm transition ${
                 role.id === props.selectedRoleId
-                  ? "border-violet-400 bg-violet-50 ring-2 ring-violet-100"
+                  ? "border-[#B88AAE] bg-[#F5E6F0] ring-2 ring-[#F5E6F0]"
                   : "bg-white hover:border-slate-300"
               }`}
             >
@@ -769,7 +769,7 @@ function AccessMap(props: {
             key={model.id}
             className={`absolute w-[220px] overflow-hidden rounded-xl border bg-white shadow-md transition-shadow ${
               model.id === props.selectedModelId
-                ? "border-violet-400 ring-2 ring-violet-100"
+                ? "border-[#B88AAE] ring-2 ring-[#F5E6F0]"
                 : "border-slate-200 hover:shadow-lg"
             }`}
             style={{ left: model.position.x, top: model.position.y }}
@@ -788,7 +788,7 @@ function AccessMap(props: {
               }}
             >
               <GripVertical className="mt-0.5 size-4 shrink-0 text-slate-400" />
-              <Database className="mt-0.5 size-4 shrink-0 text-violet-600" />
+              <Database className="mt-0.5 size-4 shrink-0 text-[#714B67]" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{model.name}</div>
                 <div className="truncate text-[11px] text-slate-500">{model.technicalName}</div>
@@ -858,7 +858,7 @@ function ModelInspector(props: {
     <aside className="absolute inset-y-0 right-0 w-[320px] overflow-y-auto border-l bg-white">
       <div className="border-b p-4">
         <div className="flex items-start gap-3">
-          <div className="grid size-9 place-items-center rounded-lg bg-violet-50 text-violet-700">
+          <div className="grid size-9 place-items-center rounded-lg bg-[#F5E6F0] text-[#714B67]">
             <Database className="size-4" />
           </div>
           <div className="min-w-0">
@@ -882,7 +882,7 @@ function ModelInspector(props: {
                 onClick={() => props.onToggleCrud(key)}
                 className={`rounded-lg border px-2 py-2 text-center transition ${
                   enabled
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    ? "border-[#00A09D] bg-[#E6F4F3] text-[#00A09D]"
                     : "border-slate-200 bg-white text-slate-400"
                 }`}
               >
@@ -899,7 +899,7 @@ function ModelInspector(props: {
           value={props.model.recordScopeByRole[props.roleId]}
           onChange={(event) => props.onSetRecordScope(event.target.value)}
           rows={5}
-          className="w-full rounded-lg border bg-slate-950 p-3 font-mono text-[11px] leading-5 text-emerald-300 outline-none focus:border-violet-400"
+          className="w-full rounded-md border bg-slate-950 p-3 font-mono text-[11px] leading-5 text-[#00A09D] outline-none focus:border-[#B88AAE]"
         />
         <p className="mt-2 text-[11px] leading-4 text-slate-500">
           该条件将生成 <code>ir.rule.domain_force</code>。上线前需在真实 Odoo 环境验证。
@@ -920,7 +920,7 @@ function ModelInspector(props: {
                   onChange={(event) =>
                     props.onSetFieldAccess(field.id, event.target.value as FieldAccess)
                   }
-                  className="h-7 rounded-md border bg-white px-1.5 text-[11px]"
+                  className="h-7 rounded-sm border bg-white px-1.5 text-[11px]"
                 >
                   {FIELD_ACCESS_SEQUENCE.map((access) => (
                     <option key={access} value={access}>
@@ -975,7 +975,7 @@ function FieldMatrix(props: {
                 onClick={() => props.onSelectRole(role.id)}
                 className={`rounded-md px-3 py-1.5 text-xs ${
                   role.id === props.selectedRoleId
-                    ? "bg-white font-medium text-violet-700 shadow-sm"
+                    ? "bg-white font-medium text-[#714B67] shadow-sm"
                     : "text-slate-500"
                 }`}
               >
@@ -1019,7 +1019,7 @@ function FieldMatrix(props: {
                             event.target.value as FieldAccess,
                           )
                         }
-                        className="h-7 rounded-md border bg-white px-1.5 text-[11px]"
+                        className="h-7 rounded-sm border bg-white px-1.5 text-[11px]"
                       >
                         {FIELD_ACCESS_SEQUENCE.map((access) => (
                           <option key={access} value={access}>
@@ -1061,7 +1061,7 @@ function WorkflowDesigner(props: {
             <h2 className="font-semibold">销售订单状态流程</h2>
             <p className="mt-1 text-xs text-slate-500">模型：{props.project.workflow.model}</p>
           </div>
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-700">
+          <span className="rounded-full bg-[#F5E6F0] px-3 py-1 text-xs text-[#714B67]">
             点击连线配置执行角色
           </span>
         </div>
@@ -1084,7 +1084,7 @@ function WorkflowDesigner(props: {
                     y1={from.y + 34}
                     x2={to.x - 12}
                     y2={to.y + 34}
-                    stroke={selected ? "#7c3aed" : "#94a3b8"}
+                    stroke={selected ? "#714B67" : "#94a3b8"}
                     strokeWidth={selected ? 3 : 2}
                     markerEnd="url(#arrowhead)"
                   />
@@ -1095,7 +1095,7 @@ function WorkflowDesigner(props: {
                     height="24"
                     rx="12"
                     fill={selected ? "#ede9fe" : "white"}
-                    stroke={selected ? "#8b5cf6" : "#cbd5e1"}
+                    stroke={selected ? "#714B67" : "#cbd5e1"}
                   />
                   <text
                     x={(from.x + to.x) / 2}
@@ -1116,7 +1116,7 @@ function WorkflowDesigner(props: {
               className="absolute w-[120px] rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm"
               style={{ left: state.x, top: state.y }}
             >
-              <div className="mx-auto mb-2 grid size-7 place-items-center rounded-full bg-violet-50 text-violet-700">
+              <div className="mx-auto mb-2 grid size-7 place-items-center rounded-full bg-[#F5E6F0] text-[#714B67]">
                 <GitBranch className="size-3.5" />
               </div>
               <div className="text-sm font-semibold">{state.name}</div>
@@ -1132,7 +1132,7 @@ function WorkflowDesigner(props: {
               onClick={() => props.onSelectTransition(transition.id)}
               className={`rounded-xl border bg-white p-4 text-left shadow-sm ${
                 transition.id === props.selectedTransitionId
-                  ? "border-violet-400 ring-2 ring-violet-100"
+                  ? "border-[#B88AAE] ring-2 ring-[#F5E6F0]"
                   : "border-slate-200"
               }`}
             >
@@ -1168,7 +1168,7 @@ function WorkflowDesigner(props: {
                         type="checkbox"
                         checked={enabled}
                         onChange={(event) => props.onSetTransitionRole(role.id, event.target.checked)}
-                        className="size-4 accent-violet-600"
+                        className="size-4 accent-[#714B67]"
                       />
                     </label>
                   );
@@ -1181,7 +1181,7 @@ function WorkflowDesigner(props: {
                 value={selectedTransition.condition}
                 onChange={(event) => props.onSetTransitionCondition(event.target.value)}
                 rows={4}
-                className="w-full rounded-lg border p-3 text-xs leading-5 outline-none focus:border-violet-400"
+                className="w-full rounded-lg border p-3 text-xs leading-5 outline-none focus:border-[#B88AAE]"
               />
             </div>
             <div className="border-t py-4">
@@ -1189,7 +1189,7 @@ function WorkflowDesigner(props: {
               <div className="space-y-2">
                 {selectedTransition.actions.map((action) => (
                   <div key={action} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                    <Check className="size-3.5 text-emerald-600" />
+                    <Check className="size-3.5 text-[#00A09D]" />
                     {action}
                   </div>
                 ))}
@@ -1264,7 +1264,7 @@ function CodeTabButton(props: {
       type="button"
       onClick={props.onClick}
       className={`rounded-lg px-3 py-2 text-xs ${
-        props.active ? "bg-violet-50 font-medium text-violet-700" : "text-slate-500 hover:bg-slate-50"
+        props.active ? "bg-[#F5E6F0] font-medium text-[#714B67]" : "text-slate-500 hover:bg-slate-50"
       }`}
     >
       {props.children}
@@ -1277,7 +1277,7 @@ function FindingsPanel(props: {
   onClose: () => void;
 }) {
   return (
-    <div className="absolute right-4 top-4 z-50 w-[390px] overflow-hidden rounded-2xl border bg-white shadow-2xl">
+    <div className="absolute right-4 top-4 z-50 w-[390px] overflow-hidden rounded-2xl border bg-white shadow-xl">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
           <h3 className="font-semibold">权限检查结果</h3>
@@ -1289,7 +1289,7 @@ function FindingsPanel(props: {
       </div>
       <div className="max-h-[520px] space-y-2 overflow-y-auto p-3">
         {props.findings.length === 0 ? (
-          <div className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-700">未发现明显的权限配置冲突。</div>
+          <div className="rounded-xl bg-[#E6F4F3] p-4 text-sm text-[#00A09D]">未发现明显的权限配置冲突。</div>
         ) : (
           props.findings.map((finding) => (
             <div key={finding.id} className="rounded-xl border p-3">
@@ -1319,9 +1319,9 @@ function FindingsPanel(props: {
 function AccessBadge(props: { value: FieldAccess; compact?: boolean }) {
   const style = {
     hidden: "bg-slate-100 text-slate-500",
-    readonly: "bg-amber-50 text-amber-700",
-    editable: "bg-emerald-50 text-emerald-700",
-    masked: "bg-blue-50 text-blue-700",
+    readonly: "bg-orange-50 text-orange-700",
+    editable: "bg-[#E6F4F3] text-[#00A09D]",
+    masked: "bg-purple-50 text-purple-700",
   }[props.value];
   return (
     <span className={`inline-flex shrink-0 items-center gap-1 rounded-full ${style} ${props.compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-1 text-[10px]"}`}>
