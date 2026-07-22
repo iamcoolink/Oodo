@@ -15,6 +15,8 @@ import { ThreadView } from "../agent-inbox";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { GenericInterruptView } from "./generic-interrupt";
 import { useArtifact } from "../artifact";
+import { Bot } from "lucide-react";
+import { useMemo } from "react";
 
 function CustomComponent({
   message,
@@ -125,6 +127,13 @@ export function AssistantMessage({
   const threadInterrupt = thread.interrupt;
 
   const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
+  const timestamp = useMemo(() => {
+    return new Date().toLocaleTimeString("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }, [message?.id]);
   const anthropicStreamedToolCalls = Array.isArray(content)
     ? parseAnthropicStreamedToolCalls(content)
     : undefined;
@@ -147,8 +156,12 @@ export function AssistantMessage({
   }
 
   return (
-    <div className="group mr-auto flex w-full items-start gap-2">
-      <div className="flex w-full flex-col gap-2">
+    <div className="group flex w-full items-start gap-2.5">
+      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#714B67] text-white">
+        <Bot className="h-3.5 w-3.5" />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-[11px] text-gray-400">{timestamp}</span>
         {isToolResult ? (
           <>
             <ToolResult message={message} />
@@ -161,7 +174,7 @@ export function AssistantMessage({
         ) : (
           <>
             {contentString.length > 0 && (
-              <div className="w-fit max-w-[90%] rounded-2xl rounded-tl-sm bg-[#F5E6F0] px-4 py-2.5 text-slate-800">
+              <div className="w-fit max-w-[90%] rounded-md rounded-tl-none bg-[#F5E6F0] px-3 py-2 text-sm text-slate-800">
                 <MarkdownText>{contentString}</MarkdownText>
               </div>
             )}
@@ -193,7 +206,7 @@ export function AssistantMessage({
             />
             <div
               className={cn(
-                "mr-auto flex items-center gap-2 transition-opacity",
+                "flex items-center gap-2 transition-opacity",
                 "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
               )}
             >
@@ -219,8 +232,11 @@ export function AssistantMessage({
 
 export function AssistantMessageLoading() {
   return (
-    <div className="mr-auto flex items-start gap-2">
-      <div className="flex h-8 items-center gap-1 rounded-2xl bg-[#F5E6F0] px-4 py-2">
+    <div className="flex items-start gap-2.5">
+      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#714B67] text-white">
+        <Bot className="h-3.5 w-3.5" />
+      </div>
+      <div className="flex h-7 items-center gap-1 rounded-md rounded-tl-none bg-[#F5E6F0] px-3 py-2">
         <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full"></div>
         <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full"></div>
         <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_1s_infinite] rounded-full"></div>

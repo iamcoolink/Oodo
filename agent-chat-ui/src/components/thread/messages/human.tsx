@@ -1,12 +1,13 @@
 import { useStreamContext } from "@/providers/Stream";
 import { Message } from "@langchain/langgraph-sdk";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getContentString } from "../utils";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MultimodalPreview } from "@/components/thread/MultimodalPreview";
 import { isBase64ContentBlock } from "@/lib/multimodal-utils";
+import { User } from "lucide-react";
 
 function EditableContent({
   value,
@@ -48,6 +49,13 @@ export function HumanMessage({
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState("");
   const contentString = getContentString(message.content);
+  const timestamp = useMemo(() => {
+    return new Date().toLocaleTimeString("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }, [message.id]);
 
   const handleSubmitEdit = () => {
     setIsEditing(false);
@@ -76,11 +84,15 @@ export function HumanMessage({
   return (
     <div
       className={cn(
-        "group ml-auto flex items-center gap-2",
-        isEditing && "w-full max-w-xl",
+        "group flex w-full items-start gap-2.5",
+        isEditing && "max-w-xl",
       )}
     >
-      <div className={cn("flex flex-col gap-2", isEditing && "w-full")}>
+      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-600">
+        <User className="h-3.5 w-3.5" />
+      </div>
+      <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5", isEditing && "w-full")}>
+        <span className="text-[11px] text-gray-400">{timestamp}</span>
         {isEditing ? (
           <EditableContent
             value={value}
@@ -91,7 +103,7 @@ export function HumanMessage({
           <div className="flex flex-col gap-2">
             {/* Render images and files if no text */}
             {Array.isArray(message.content) && message.content.length > 0 && (
-              <div className="flex flex-wrap items-end justify-end gap-2">
+              <div className="flex flex-wrap items-start justify-start gap-2">
                 {message.content.reduce<React.ReactNode[]>(
                   (acc, block, idx) => {
                     if (isBase64ContentBlock(block)) {
@@ -111,7 +123,7 @@ export function HumanMessage({
             )}
             {/* Render text if present, otherwise fallback to file/image name */}
             {contentString ? (
-              <p className="ml-auto w-fit rounded-2xl rounded-tr-sm border border-[#E9D5E6] bg-white px-4 py-2 text-right whitespace-pre-wrap text-slate-800 shadow-sm">
+              <p className="w-fit rounded-md rounded-tl-none border border-gray-100 bg-white px-3 py-2 text-sm whitespace-pre-wrap text-slate-800 shadow-sm">
                 {contentString}
               </p>
             ) : null}
@@ -120,7 +132,7 @@ export function HumanMessage({
 
         <div
           className={cn(
-            "ml-auto flex items-center gap-2 transition-opacity",
+            "flex items-center gap-2 transition-opacity",
             "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
             isEditing && "opacity-100",
           )}

@@ -22,6 +22,7 @@ import {
   SquarePen,
   XIcon,
   Plus,
+  Send,
 } from "lucide-react";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
@@ -262,20 +263,19 @@ export function Thread() {
             <div className="absolute top-0 left-0 z-10 flex w-full items-center justify-between gap-3 p-2 pl-4" />
           )}
           {chatStarted && (
-            <div className="relative z-10 flex items-center justify-between gap-3 p-2">
-              <div className="relative flex items-center justify-start gap-2">
-                <motion.button
-                  className="flex cursor-pointer items-center gap-2"
-                  onClick={() => setThreadId(null)}
-                >
-                  <LangGraphLogoSVG
-                    width={32}
-                    height={32}
-                  />
-                  <span className="text-xl font-semibold tracking-tight">
-                    Odoo ERP
+            <div className="relative z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white p-3">
+              <div className="relative flex flex-col justify-center">
+                <span className="text-base font-semibold text-slate-800">
+                  Odoo ERP
+                </span>
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <span>Odoo 权限设计助手</span>
+                  <span className="text-gray-300">·</span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                    online
                   </span>
-                </motion.button>
+                </div>
               </div>
 
               <div className="flex items-center gap-4">
@@ -301,7 +301,7 @@ export function Thread() {
                 !chatStarted && "mt-[25vh] flex flex-col items-stretch",
                 chatStarted && "grid grid-rows-[1fr_auto]",
               )}
-              contentClassName="pt-8 pb-16 max-w-3xl mx-auto flex flex-col gap-4 w-full"
+              contentClassName="pt-8 pb-16 max-w-3xl mx-auto flex flex-col gap-5 w-full"
               content={
                 <>
                   {messages
@@ -353,7 +353,7 @@ export function Thread() {
                   <div
                     ref={dropRef}
                     className={cn(
-                      "relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl border border-[#E9D5E6] bg-white shadow-sm transition-all",
+                      "relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-xl border border-[#E9D5E6] bg-white shadow-sm transition-all",
                       dragOver
                         ? "border-[#714B67] border-2 border-dotted"
                         : "border border-solid",
@@ -384,45 +384,47 @@ export function Thread() {
                             form?.requestSubmit();
                           }
                         }}
-                        placeholder="输入您想调整的权限..."
-                        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
+                        placeholder="例如：金额超过5万元时增加两级审批......"
+                        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 text-sm shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
                       />
 
-                      <div className="flex items-center gap-6 p-2 pt-4">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="render-tool-calls"
-                              checked={hideToolCalls ?? false}
-                              onCheckedChange={setHideToolCalls}
-                            />
-                            <Label
-                              htmlFor="render-tool-calls"
-                              className="text-sm text-gray-600"
-                            >
-                              Hide Tool Calls
-                            </Label>
-                          </div>
+                      <div className="flex items-center justify-between p-2 pt-4">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="render-tool-calls"
+                            checked={hideToolCalls ?? false}
+                            onCheckedChange={setHideToolCalls}
+                          />
+                          <Label
+                            htmlFor="render-tool-calls"
+                            className="text-sm text-gray-600"
+                          >
+                            Hide Tool Calls
+                          </Label>
                         </div>
+                        <span className="text-xs text-gray-400">
+                          Enter 发送 · Shift+Enter ...
+                        </span>
                         {stream.isLoading ? (
                           <Button
                             key="stop"
+                            size="icon"
                             onClick={() => stream.stop()}
-                            className="ml-auto rounded-md bg-[#F5E6F0] px-5 text-[#714B67] shadow-sm transition-all hover:bg-[#EBD5E8]"
+                            className="rounded-full bg-[#F5E6F0] text-[#714B67] shadow-sm transition-all hover:bg-[#EBD5E8]"
                           >
-                            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                            停止
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
                           </Button>
                         ) : (
                           <Button
                             type="submit"
-                            className="ml-auto rounded-md bg-[#714B67] px-5 text-white shadow-sm transition-all hover:bg-[#5C3D54]"
+                            size="icon"
+                            className="rounded-full bg-[#714B67] text-white shadow-sm transition-all hover:bg-[#5C3D54]"
                             disabled={
                               isLoading ||
                               (!input.trim() && contentBlocks.length === 0)
                             }
                           >
-                            发送
+                            <Send className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
