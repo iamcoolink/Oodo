@@ -232,7 +232,7 @@ export function Thread() {
   );
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden">
       <div
         className={cn(
           "grid w-full grid-cols-[1fr_0fr] transition-all duration-500",
@@ -338,7 +338,7 @@ export function Thread() {
                 </>
               }
               footer={
-                <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
+                <div className="sticky bottom-0 flex flex-col items-center gap-4 bg-white">
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
                       <LangGraphLogoSVG className="h-8 flex-shrink-0" />
@@ -353,7 +353,7 @@ export function Thread() {
                   <div
                     ref={dropRef}
                     className={cn(
-                      "relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-xl border border-[#E9D5E6] bg-white shadow-sm transition-all",
+                      "relative z-10 mx-auto mb-4 w-full max-w-3xl rounded-xl border border-[#E9D5E6] bg-white shadow-sm transition-all",
                       dragOver
                         ? "border-[#714B67] border-2 border-dotted"
                         : "border border-solid",

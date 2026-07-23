@@ -20,7 +20,6 @@ import {
   Network,
   Save,
   Search,
-  ShieldCheck,
   TableProperties,
   UsersRound,
   Workflow,
@@ -365,21 +364,7 @@ export function PermissionDesigner(): React.ReactNode {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-50 text-slate-900">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-[#714B67] text-white shadow-sm">
-            <ShieldCheck className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-semibold">Odoo 权限与流程设计器</h1>
-              <span className="rounded-full bg-[#F5E6F0] px-2 py-0.5 text-[11px] font-medium text-[#714B67]">
-                Odoo {project.odooVersion}
-              </span>
-            </div>
-            <p className="truncate text-xs text-slate-500">{project.name}</p>
-          </div>
-        </div>
+      <header className="flex h-16 shrink-0 items-center justify-end border-b bg-white px-5">
         <div className="flex items-center gap-2">
           <button
             type="button"
