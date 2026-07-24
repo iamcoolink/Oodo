@@ -72,6 +72,19 @@ const CRUD_LABELS: Array<{ key: CrudOperation; label: string }> = [
   { key: "unlink", label: "D" },
 ];
 
+const PROJECT_STORAGE_KEY = "odoo-permission-studio.project";
+
+function loadSavedProject(): PermissionProject | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
+    if (!raw) return null;
+    return normalizePermissionProject(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
 export function PermissionDesigner(): React.ReactNode {
   const [project, setProject] = useState<PermissionProject>(initialPermissionProject);
   const [selectedRoleId, setSelectedRoleId] = useState(project.roles[0].id);
@@ -82,6 +95,16 @@ export function PermissionDesigner(): React.ReactNode {
   const [selectedTransitionId, setSelectedTransitionId] = useState(
     project.workflow.transitions[0]?.id ?? "",
   );
+
+  useEffect(() => {
+    const saved = loadSavedProject();
+    if (!saved) return;
+    setProject(saved);
+    setSelectedRoleId(saved.roles[0]?.id ?? "");
+    setSelectedUserId(saved.users[0]?.id ?? "");
+    setSelectedModelId(saved.models[0]?.id ?? "");
+    setSelectedTransitionId(saved.workflow.transitions[0]?.id ?? "");
+  }, []);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("map");
   const [codeTab, setCodeTab] = useState<CodeTab>("acl");
   const [query, setQuery] = useState("");
@@ -287,6 +310,19 @@ export function PermissionDesigner(): React.ReactNode {
     URL.revokeObjectURL(url);
   };
 
+  const saveProject = () => {
+    try {
+      localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
+      toast.success("设计已保存", {
+        description: "下次打开会自动恢复当前设计",
+      });
+    } catch {
+      toast.error("保存失败", {
+        description: "浏览器存储空间可能已满",
+      });
+    }
+  };
+
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const importProject = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -404,7 +440,7 @@ export function PermissionDesigner(): React.ReactNode {
           />
           <button
             type="button"
-            onClick={() => toast.success("设计已保存在浏览器状态中")}
+            onClick={saveProject}
             className="inline-flex h-9 items-center gap-2 rounded-md bg-[#714B67] px-3 text-sm font-medium text-white hover:bg-[#5C3D54]"
           >
             <Save className="size-4" />
