@@ -41,4 +41,9 @@ New-Item -ItemType Directory -Path $iconsTarget -Force | Out-Null
 Copy-Item -Path (Join-Path $overlay "src\components\icons\langgraph.tsx") `
           -Destination (Join-Path $iconsTarget "langgraph.tsx") -Force
 
+$i18nTarget = Join-Path $AgentChatUiPath "src\i18n"
+New-Item -ItemType Directory -Path $i18nTarget -Force | Out-Null
+Copy-Item -Path (Join-Path $overlay "src\i18n\*") `
+          -Destination $i18nTarget -Recurse -Force
+
 Write-Host "Overlay installed. Run: cd $AgentChatUiPath; pnpm dev"

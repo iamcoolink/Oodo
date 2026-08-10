@@ -8,19 +8,24 @@ import type {
   FieldAccess,
 } from "./types";
 
-const DEFAULT_ROLE: RoleDefinition = {
-  id: "default_user",
-  name: "默认用户",
-  technicalName: "group_default_user",
-};
+function createDefaultRole(t: (key: string, ...args: any[]) => string): RoleDefinition {
+  return {
+    id: "default_user",
+    name: t("utils.defaultRoleName"),
+    technicalName: "group_default_user",
+  };
+}
 
-const DEFAULT_USER: UserDefinition = {
-  id: "admin",
-  name: "管理员",
-  email: "admin@example.com",
-  company: "Default Company",
-  roleIds: [DEFAULT_ROLE.id],
-};
+function createDefaultUser(t: (key: string, ...args: any[]) => string): UserDefinition {
+  const role = createDefaultRole(t);
+  return {
+    id: "admin",
+    name: t("utils.defaultUserName"),
+    email: "admin@example.com",
+    company: "Default Company",
+    roleIds: [role.id],
+  };
+}
 
 const DEFAULT_ACCESS_RIGHTS: AccessRights = {
   read: true,
@@ -64,17 +69,18 @@ function convertTableToModel(
   table: unknown,
   index: number,
   roleIds: string[],
+  t: (key: string, ...args: any[]) => string,
 ): ModelDefinition {
-  const t = table as Record<string, unknown>;
+  const tableRecord = table as Record<string, unknown>;
 
   const technicalName =
-    (t.technicalName as string) ||
-    (t.tableName as string) ||
-    (t.name as string) ||
+    (tableRecord.technicalName as string) ||
+    (tableRecord.tableName as string) ||
+    (tableRecord.name as string) ||
     `table_${index}`;
 
   const displayName =
-    (t.name as string) || technicalName || `表 ${index + 1}`;
+    (tableRecord.name as string) || technicalName || t("utils.fallbackModelName", index + 1);
 
   const modelId = generateId(technicalName);
 
@@ -86,7 +92,7 @@ function convertTableToModel(
   });
 
   const fields: FieldDefinition[] = [];
-  const rawFields = t.fields;
+  const rawFields = tableRecord.fields;
   if (Array.isArray(rawFields)) {
     rawFields.forEach((f, fieldIndex) => {
       const field = f as Record<string, unknown>;
@@ -96,7 +102,7 @@ function convertTableToModel(
         `field_${fieldIndex}`;
 
       const fieldDisplayName =
-        (field.name as string) || fieldTechnicalName || `字段 ${fieldIndex + 1}`;
+        (field.name as string) || fieldTechnicalName || t("utils.fallbackFieldName", fieldIndex + 1);
 
       const accessByRole: Record<string, FieldAccess> = {};
       roleIds.forEach((roleId) => {
@@ -121,7 +127,7 @@ function convertTableToModel(
     id: modelId,
     name: displayName,
     technicalName,
-    module: (t.module as string) || "Base",
+    module: (tableRecord.module as string) || "Base",
     position: {
       x: 250 + col * 260,
       y: 50 + row * 280,
@@ -132,17 +138,20 @@ function convertTableToModel(
   };
 }
 
-export function normalizePermissionProject(data: unknown): PermissionProject {
+export function normalizePermissionProject(
+  data: unknown,
+  t: (key: string, ...args: any[]) => string,
+): PermissionProject {
   if (isPermissionProject(data)) {
     const project = data;
 
-    const roles = project.roles.length > 0 ? project.roles : [DEFAULT_ROLE];
+    const roles = project.roles.length > 0 ? project.roles : [createDefaultRole(t)];
     const roleIds = roles.map((r) => r.id);
 
     const users =
       project.users && project.users.length > 0
         ? project.users
-        : [DEFAULT_USER];
+        : [createDefaultUser(t)];
 
     const models = project.models.map((model) => {
       const accessByRole: Record<string, AccessRights> = {};
@@ -193,19 +202,19 @@ export function normalizePermissionProject(data: unknown): PermissionProject {
 
   if (isTableOnlyFormat(data)) {
     const tables = data.tables as unknown[];
-    const roles: RoleDefinition[] = [DEFAULT_ROLE];
+    const roles: RoleDefinition[] = [createDefaultRole(t)];
     const roleIds = roles.map((r) => r.id);
 
     const models = tables.map((table, index) =>
-      convertTableToModel(table, index, roleIds),
+      convertTableToModel(table, index, roleIds, t),
     );
 
     return {
       id: (data.id as string) || generateId((data.name as string) || "imported"),
-      name: (data.name as string) || "导入的权限设计",
+      name: (data.name as string) || t("utils.defaultProjectName"),
       odooVersion: (data.odooVersion as string) || "19.0",
       roles,
-      users: [DEFAULT_USER],
+      users: [createDefaultUser(t)],
       models,
       workflow: {
         model: models[0]?.technicalName || "sale.order",
@@ -215,18 +224,19 @@ export function normalizePermissionProject(data: unknown): PermissionProject {
     };
   }
 
-  throw new Error("无法识别的 JSON 格式");
+  throw new Error(t("errors.unrecognizableJson"));
 }
 
 export function addRoleToProject(
   project: PermissionProject,
   name: string,
   technicalName: string,
+  t: (key: string, ...args: any[]) => string,
 ): PermissionProject {
   const id = generateId(technicalName);
 
   if (project.roles.some((r) => r.id === id)) {
-    throw new Error(`角色 ${technicalName} 已存在`);
+    throw new Error(t("errors.roleExists", technicalName));
   }
 
   const newRole: RoleDefinition = { id, name, technicalName };
@@ -264,14 +274,15 @@ export function addRoleToProject(
 export function deleteRoleFromProject(
   project: PermissionProject,
   roleId: string,
+  t: (key: string, ...args: any[]) => string,
 ): PermissionProject {
   if (project.roles.length <= 1) {
-    throw new Error("至少保留一个角色");
+    throw new Error(t("errors.keepOneRole"));
   }
 
   const roleExists = project.roles.some((r) => r.id === roleId);
   if (!roleExists) {
-    throw new Error(`角色不存在`);
+    throw new Error(t("errors.roleNotFound"));
   }
 
   const roles = project.roles.filter((r) => r.id !== roleId);

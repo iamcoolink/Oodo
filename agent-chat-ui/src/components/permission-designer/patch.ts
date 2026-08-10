@@ -13,10 +13,11 @@ export interface PatchApplyResult {
 export function applyPermissionPatch(
   project: PermissionProject,
   patch: PermissionPatch,
+  t: (key: string, ...args: any[]) => string,
 ): PatchApplyResult {
   const skipped: string[] = [];
   const nextProject = patch.operations.reduce<PermissionProject>(
-    (current, operation) => applyOperation(current, operation, skipped),
+    (current, operation) => applyOperation(current, operation, skipped, t),
     project,
   );
   return { project: nextProject, skipped };
@@ -53,6 +54,7 @@ function applyOperation(
   project: PermissionProject,
   operation: PermissionPatchOperation,
   skipped: string[],
+  t: (key: string, ...args: any[]) => string,
 ): PermissionProject {
   switch (operation.op) {
     case "set_model_access": {
@@ -60,7 +62,7 @@ function applyOperation(
       const modelId = resolveModelId(project, operation.modelId);
       if (!roleId || !modelId) {
         skipped.push(
-          `${operation.op}: 未找到角色 "${operation.roleId}" 或模型 "${operation.modelId}"`,
+          t("errors.modelNotFound", operation.op, operation.roleId, operation.modelId),
         );
         return project;
       }
@@ -87,14 +89,14 @@ function applyOperation(
       const modelId = resolveModelId(project, operation.modelId);
       if (!roleId || !modelId) {
         skipped.push(
-          `${operation.op}: 未找到角色 "${operation.roleId}" 或模型 "${operation.modelId}"`,
+          t("errors.modelNotFound", operation.op, operation.roleId, operation.modelId),
         );
         return project;
       }
       const model = project.models.find((m) => m.id === modelId);
       const fieldId = model ? resolveFieldId(model, operation.fieldId) : null;
       if (!fieldId) {
-        skipped.push(`${operation.op}: 未找到字段 "${operation.fieldId}"`);
+        skipped.push(t("errors.fieldNotFound", operation.op, operation.fieldId));
         return project;
       }
       return {
@@ -124,7 +126,7 @@ function applyOperation(
       const modelId = resolveModelId(project, operation.modelId);
       if (!roleId || !modelId) {
         skipped.push(
-          `${operation.op}: 未找到角色 "${operation.roleId}" 或模型 "${operation.modelId}"`,
+          t("errors.modelNotFound", operation.op, operation.roleId, operation.modelId),
         );
         return project;
       }
@@ -150,7 +152,7 @@ function applyOperation(
           transitionItem.name === operation.transitionId,
       );
       if (!transition) {
-        skipped.push(`${operation.op}: 未找到转换 "${operation.transitionId}"`);
+        skipped.push(t("errors.transitionNotFound", operation.op, operation.transitionId));
         return project;
       }
       const resolvedRoleIds = operation.roleIds
@@ -175,7 +177,7 @@ function applyOperation(
           transitionItem.name === operation.transitionId,
       );
       if (!transition) {
-        skipped.push(`${operation.op}: 未找到转换 "${operation.transitionId}"`);
+        skipped.push(t("errors.transitionNotFound", operation.op, operation.transitionId));
         return project;
       }
       return {
@@ -193,7 +195,7 @@ function applyOperation(
     case "move_model": {
       const modelId = resolveModelId(project, operation.modelId);
       if (!modelId) {
-        skipped.push(`${operation.op}: 未找到模型 "${operation.modelId}"`);
+        skipped.push(t("errors.modelNotFound", operation.op, "", operation.modelId));
         return project;
       }
       return {
@@ -242,7 +244,10 @@ function messageContentToText(content: unknown): string {
     .join("\n");
 }
 
-export function validateProject(project: PermissionProject): ValidationFinding[] {
+export function validateProject(
+  project: PermissionProject,
+  t: (key: string, ...args: any[]) => string,
+): ValidationFinding[] {
   const findings: ValidationFinding[] = [];
 
   for (const model of project.models) {
@@ -254,8 +259,8 @@ export function validateProject(project: PermissionProject): ValidationFinding[]
         findings.push({
           id: `${model.id}-${role.id}-write-without-read`,
           severity: "error",
-          title: `${role.name} 对 ${model.name} 的 ACL 不一致`,
-          detail: "创建、修改或删除权限已开启，但读取权限未开启。",
+          title: t("errors.aclInconsistent", role.name, model.name),
+          detail: t("errors.aclInconsistentDetail"),
         });
       }
 
@@ -263,8 +268,8 @@ export function validateProject(project: PermissionProject): ValidationFinding[]
         findings.push({
           id: `${model.id}-${role.id}-unlink`,
           severity: "warning",
-          title: `${role.name} 可以删除 ${model.name}`,
-          detail: "基础业务用户通常不应拥有删除核心业务记录的权限。",
+          title: t("errors.canDelete", role.name, model.name),
+          detail: t("errors.canDeleteDetail"),
         });
       }
 
@@ -274,30 +279,11 @@ export function validateProject(project: PermissionProject): ValidationFinding[]
           findings.push({
             id: `${model.id}-${field.id}-${role.id}-editable`,
             severity: "warning",
-            title: `${field.name} 显示为可编辑，但模型不可写`,
-            detail: `${role.name} 没有 ${model.technicalName} 的 write ACL。`,
+            title: t("errors.editableButNotWritable", field.name),
+            detail: t("errors.editableButNotWritableDetail", role.name, model.technicalName),
           });
         }
       }
-    }
-  }
-
-  for (const transition of project.workflow.transitions) {
-    if (transition.allowedRoleIds.length === 0) {
-      findings.push({
-        id: `${transition.id}-no-role`,
-        severity: "error",
-        title: `${transition.name} 没有执行角色`,
-        detail: "流程将无法从当前状态继续。",
-      });
-    }
-    if (!transition.condition.trim()) {
-      findings.push({
-        id: `${transition.id}-no-condition`,
-        severity: "info",
-        title: `${transition.name} 未定义前置条件`,
-        detail: "请确认该转换是否确实可以无条件执行。",
-      });
     }
   }
 

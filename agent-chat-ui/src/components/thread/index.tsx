@@ -12,10 +12,11 @@ import {
   DO_NOT_RENDER_ID_PREFIX,
   ensureToolCallsHaveResponses,
 } from "@/lib/ensure-tool-responses";
-import { LangGraphLogoSVG } from "../icons/langgraph";
+
 import { TooltipIconButton } from "./tooltip-icon-button";
 import {
   ArrowDown,
+  Bot,
   LoaderCircle,
   PanelRightOpen,
   PanelRightClose,
@@ -39,6 +40,7 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { useFileUpload } from "@/hooks/use-file-upload";
+import { useI18n } from "@/i18n";
 import { ContentBlocksPreview } from "./ContentBlocksPreview";
 import {
   useArtifactOpen,
@@ -90,6 +92,7 @@ function ScrollToBottom(props: { className?: string }) {
 
 
 export function Thread() {
+  const { t } = useI18n();
   const [artifactContext, setArtifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 
@@ -226,7 +229,6 @@ export function Thread() {
     });
   };
 
-  const chatStarted = !!threadId || !!messages.length;
   const hasNoAIOrToolMessages = !messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );
@@ -240,10 +242,7 @@ export function Thread() {
         )}
       >
         <motion.div
-          className={cn(
-            "relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[#F9F9F9]",
-            !chatStarted && "grid-rows-[1fr]",
-          )}
+          className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[#F9F9F9]"
           layout={isLargeScreen}
           animate={{
             marginLeft: chatHistoryOpen ? (isLargeScreen ? 300 : 0) : 0,
@@ -259,51 +258,57 @@ export function Thread() {
               : { duration: 0 }
           }
         >
-          {!chatStarted && (
-            <div className="absolute top-0 left-0 z-10 flex w-full items-center justify-between gap-3 p-2 pl-4" />
-          )}
-          {chatStarted && (
-            <div className="relative z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white p-3">
-              <div className="relative flex flex-col justify-center">
-                <span className="text-base font-semibold text-slate-800">
-                  Odoo ERP
+          <div className="relative z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white p-3">
+            <div className="relative flex flex-col justify-center">
+              <span className="text-base font-semibold text-slate-800">
+                {t("thread.headerTitle")}
+              </span>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span>{t("thread.headerSubtitle")}</span>
+                <span className="text-gray-300">·</span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                  {t("thread.online")}
                 </span>
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span>Odoo 权限设计助手</span>
-                  <span className="text-gray-300">·</span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                    online
-                  </span>
-                </div>
               </div>
-
-              <div className="flex items-center gap-4">
-                <TooltipIconButton
-                  size="lg"
-                  className="p-4"
-                  tooltip="New thread"
-                  variant="ghost"
-                  onClick={() => setThreadId(null)}
-                >
-                  <SquarePen className="size-5" />
-                </TooltipIconButton>
-              </div>
-
-              <div className="from-background to-background/0 absolute inset-x-0 top-full h-5 bg-gradient-to-b" />
             </div>
-          )}
+
+            <div className="flex items-center gap-4">
+              <TooltipIconButton
+                size="lg"
+                className="p-4"
+                tooltip={t("thread.newThreadTooltip")}
+                variant="ghost"
+                onClick={() => setThreadId(null)}
+              >
+                <SquarePen className="size-5" />
+              </TooltipIconButton>
+            </div>
+
+            <div className="from-background to-background/0 absolute inset-x-0 top-full h-5 bg-gradient-to-b" />
+          </div>
 
           <StickToBottom className="relative flex-1 overflow-hidden">
             <StickyToBottomContent
               className={cn(
                 "absolute inset-0 overflow-y-scroll px-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent",
-                !chatStarted && "mt-[25vh] flex flex-col items-stretch",
-                chatStarted && "grid grid-rows-[1fr_auto]",
+                "grid grid-rows-[1fr_auto]",
               )}
               contentClassName="pt-8 pb-16 max-w-3xl mx-auto flex flex-col gap-5 w-full"
               content={
                 <>
+                  {messages.length === 0 && !isLoading && (
+                    <div className="group flex w-full items-start gap-2.5">
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#714B67] text-white">
+                        <Bot className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <div className="w-fit max-w-[90%] rounded-md rounded-tl-none bg-[#F5E6F0] px-3 py-2 text-sm text-slate-800">
+                          {t("thread.welcomeMessage")}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {messages
                     .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
                     .map((message, index) =>
@@ -339,15 +344,6 @@ export function Thread() {
               }
               footer={
                 <div className="sticky bottom-0 flex flex-col items-center gap-4 bg-white">
-                  {!chatStarted && (
-                    <div className="flex items-center gap-3">
-                      <LangGraphLogoSVG className="h-8 flex-shrink-0" />
-                      <h1 className="text-2xl font-semibold tracking-tight">
-                        Odoo ERP
-                      </h1>
-                    </div>
-                  )}
-
                   <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
 
                   <div
@@ -384,7 +380,7 @@ export function Thread() {
                             form?.requestSubmit();
                           }
                         }}
-                        placeholder="例如：金额超过5万元时增加两级审批......"
+                        placeholder={t("thread.inputPlaceholder")}
                         className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 text-sm shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
                       />
 
@@ -399,11 +395,11 @@ export function Thread() {
                             htmlFor="render-tool-calls"
                             className="text-sm text-gray-600"
                           >
-                            Hide Tool Calls
+                            {t("thread.hideToolCalls")}
                           </Label>
                         </div>
                         <span className="text-xs text-gray-400">
-                          Enter 发送 · Shift+Enter ...
+                          {t("thread.sendHint")}
                         </span>
                         {stream.isLoading ? (
                           <Button

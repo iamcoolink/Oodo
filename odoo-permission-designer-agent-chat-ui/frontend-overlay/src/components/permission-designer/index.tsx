@@ -29,6 +29,7 @@ import { toast } from "sonner";
 
 import { useArtifactContext } from "@/components/thread/artifact";
 import { useStreamContext } from "@/providers/Stream";
+import { useI18n } from "@/i18n";
 
 import {
   fieldAccessLabel,
@@ -74,18 +75,19 @@ const CRUD_LABELS: Array<{ key: CrudOperation; label: string }> = [
 
 const PROJECT_STORAGE_KEY = "odoo-permission-studio.project";
 
-function loadSavedProject(): PermissionProject | null {
+function loadSavedProject(t: (key: string, ...args: any[]) => string): PermissionProject | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
     if (!raw) return null;
-    return normalizePermissionProject(JSON.parse(raw));
+    return normalizePermissionProject(JSON.parse(raw), t);
   } catch {
     return null;
   }
 }
 
 export function PermissionDesigner(): React.ReactNode {
+  const { t } = useI18n();
   const [project, setProject] = useState<PermissionProject>(initialPermissionProject);
   const [selectedRoleId, setSelectedRoleId] = useState(project.roles[0].id);
   const [selectedUserId, setSelectedUserId] = useState(project.users[0].id);
@@ -97,7 +99,7 @@ export function PermissionDesigner(): React.ReactNode {
   );
 
   useEffect(() => {
-    const saved = loadSavedProject();
+    const saved = loadSavedProject(t);
     if (!saved) return;
     setProject(saved);
     setSelectedRoleId(saved.roles[0]?.id ?? "");
@@ -127,7 +129,7 @@ export function PermissionDesigner(): React.ReactNode {
     (transition) => transition.id === selectedTransitionId,
   );
 
-  const findings = useMemo(() => validateProject(project), [project]);
+  const findings = useMemo(() => validateProject(project, t), [project, t]);
   const filteredModels = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return project.models;
@@ -182,15 +184,16 @@ export function PermissionDesigner(): React.ReactNode {
       const { project: nextProject, skipped } = applyPermissionPatch(
         current,
         patch,
+        t,
       );
       if (skipped.length > 0) {
-        toast.warning("部分权限变更未生效", {
+        toast.warning(t("designer.toast.patchPartial"), {
           description: skipped.join("；"),
         });
       } else {
-        toast.success("已应用聊天中的权限变更", {
+        toast.success(t("designer.toast.patchSuccess"), {
           description:
-            patch.summary || `共执行 ${patch.operations.length} 项变更。`,
+            patch.summary || t("designer.toast.patchSummary", patch.operations.length),
         });
       }
       return nextProject;
@@ -313,12 +316,12 @@ export function PermissionDesigner(): React.ReactNode {
   const saveProject = () => {
     try {
       localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
-      toast.success("设计已保存", {
-        description: "下次打开会自动恢复当前设计",
+      toast.success(t("designer.toast.saveSuccess"), {
+        description: t("designer.toast.saveSuccessDesc"),
       });
     } catch {
-      toast.error("保存失败", {
-        description: "浏览器存储空间可能已满",
+      toast.error(t("designer.toast.saveError"), {
+        description: t("designer.toast.saveErrorDesc"),
       });
     }
   };
@@ -332,18 +335,23 @@ export function PermissionDesigner(): React.ReactNode {
     reader.onload = () => {
       try {
         const raw = JSON.parse(String(reader.result));
-        const imported = normalizePermissionProject(raw);
+        const imported = normalizePermissionProject(raw, t);
         setProject(imported);
         setSelectedRoleId(imported.roles[0]?.id ?? project.roles[0].id);
         setSelectedUserId(imported.users[0]?.id ?? project.users[0].id);
         setSelectedModelId(imported.models[0]?.id ?? "");
         setSelectedTransitionId(imported.workflow.transitions[0]?.id ?? "");
-        toast.success("已导入权限设计", {
-          description: `${file.name}（${imported.models.length} 个模型，${imported.roles.length} 个角色）`,
+        toast.success(t("designer.toast.importSuccess"), {
+          description: t(
+            "designer.toast.importSuccessDesc",
+            file.name,
+            imported.models.length,
+            imported.roles.length,
+          ),
         });
       } catch (error) {
-        toast.error("导入失败", {
-          description: error instanceof Error ? error.message : "无法解析 JSON 文件",
+        toast.error(t("designer.toast.importError"), {
+          description: error instanceof Error ? error.message : t("designer.toast.importErrorDesc"),
         });
       } finally {
         event.target.value = "";
@@ -354,7 +362,7 @@ export function PermissionDesigner(): React.ReactNode {
 
   const handleAddRole = () => {
     if (!newRoleName.trim() || !newRoleTechnicalName.trim()) {
-      toast.error("请填写角色名称和技术名称");
+      toast.error(t("designer.toast.addRoleError"));
       return;
     }
     try {
@@ -362,27 +370,28 @@ export function PermissionDesigner(): React.ReactNode {
         project,
         newRoleName.trim(),
         newRoleTechnicalName.trim(),
+        t,
       );
       setProject(updated);
       setSelectedRoleId(updated.roles[updated.roles.length - 1].id);
       setNewRoleName("");
       setNewRoleTechnicalName("");
       setIsAddRoleOpen(false);
-      toast.success("已添加角色", { description: newRoleName.trim() });
+      toast.success(t("designer.toast.addRoleSuccess"), { description: newRoleName.trim() });
     } catch (error) {
-      toast.error("添加角色失败", {
-        description: error instanceof Error ? error.message : "未知错误",
+      toast.error(t("designer.toast.genericError"), {
+        description: error instanceof Error ? error.message : t("designer.toast.genericError"),
       });
     }
   };
 
   const handleDeleteRole = (roleId: string) => {
     if (project.roles.length <= 1) {
-      toast.error("至少保留一个角色");
+      toast.error(t("designer.toast.deleteRoleError"));
       return;
     }
     try {
-      const updated = deleteRoleFromProject(project, roleId);
+      const updated = deleteRoleFromProject(project, roleId, t);
       setProject(updated);
       if (selectedRoleId === roleId) {
         setSelectedRoleId(updated.roles[0].id);
@@ -390,10 +399,10 @@ export function PermissionDesigner(): React.ReactNode {
       if (selectedUserId && !updated.users.some((u) => u.id === selectedUserId)) {
         setSelectedUserId(updated.users[0].id);
       }
-      toast.success("已删除角色");
+      toast.success(t("designer.toast.deleteRoleSuccess"));
     } catch (error) {
-      toast.error("删除角色失败", {
-        description: error instanceof Error ? error.message : "未知错误",
+      toast.error(t("designer.toast.genericError"), {
+        description: error instanceof Error ? error.message : t("designer.toast.genericError"),
       });
     }
   };
@@ -408,7 +417,7 @@ export function PermissionDesigner(): React.ReactNode {
             className="relative inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm hover:bg-slate-50"
           >
             <AlertTriangle className="size-4" />
-            检查
+            {t("designer.buttons.check")}
             {findings.length > 0 && (
               <span className="rounded-full bg-amber-100 px-1.5 text-xs text-amber-800">
                 {findings.length}
@@ -421,7 +430,7 @@ export function PermissionDesigner(): React.ReactNode {
             className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm hover:bg-slate-50"
           >
             <Download className="size-4" />
-            导出 JSON
+            {t("designer.buttons.exportJson")}
           </button>
           <button
             type="button"
@@ -429,7 +438,7 @@ export function PermissionDesigner(): React.ReactNode {
             className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm hover:bg-slate-50"
           >
             <Clipboard className="size-4" />
-            导入 JSON
+            {t("designer.buttons.importJson")}
           </button>
           <input
             ref={importInputRef}
@@ -444,7 +453,7 @@ export function PermissionDesigner(): React.ReactNode {
             className="inline-flex h-9 items-center gap-2 rounded-md bg-[#714B67] px-3 text-sm font-medium text-white hover:bg-[#5C3D54]"
           >
             <Save className="size-4" />
-            保存
+            {t("designer.buttons.save")}
           </button>
         </div>
       </header>
@@ -452,22 +461,22 @@ export function PermissionDesigner(): React.ReactNode {
       <div className="flex h-14 shrink-0 items-center justify-between border-b bg-white px-4">
         <nav className="flex h-full items-center gap-1">
           <TabButton active={activeTab === "map"} onClick={() => setActiveTab("map")} icon={<Network />}>
-            权限关系图
+            {t("designer.tabs.map")}
           </TabButton>
           <TabButton active={activeTab === "matrix"} onClick={() => setActiveTab("matrix")} icon={<TableProperties />}>
-            字段矩阵
+            {t("designer.tabs.matrix")}
           </TabButton>
           <TabButton active={activeTab === "workflow"} onClick={() => setActiveTab("workflow")} icon={<Workflow />}>
-            流程设计
+            {t("designer.tabs.workflow")}
           </TabButton>
           <TabButton active={activeTab === "code"} onClick={() => setActiveTab("code")} icon={<FileCode2 />}>
-            Odoo 代码
+            {t("designer.tabs.code")}
           </TabButton>
         </nav>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-slate-500">
             <CircleUserRound className="size-4" />
-            模拟用户
+            {t("designer.simulateUser")}
             <select
               value={selectedUserId}
               onChange={(event) => {
@@ -555,37 +564,37 @@ export function PermissionDesigner(): React.ReactNode {
       <footer className="flex h-9 shrink-0 items-center justify-between border-t bg-white px-4 text-xs text-slate-500">
         <div className="flex items-center gap-2">
           <Bot className="size-3.5 text-[#714B67]" />
-          当前权限设计已作为 <code>permission_design</code> 上下文发送给左侧 LangGraph Agent
+          <span dangerouslySetInnerHTML={{ __html: t("designer.contextInfo") }} />
         </div>
         <div className="flex items-center gap-3">
-          <span>{project.roles.length} 个角色</span>
-          <span>{project.models.length} 个模型</span>
-          <span>{project.models.reduce((sum, model) => sum + model.fields.length, 0)} 个字段</span>
+          <span>{t("designer.counts.roles", project.roles.length)}</span>
+          <span>{t("designer.counts.models", project.models.length)}</span>
+          <span>{t("designer.counts.fields", project.models.reduce((sum, model) => sum + model.fields.length, 0))}</span>
         </div>
       </footer>
 
       {isAddRoleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-80 rounded-xl bg-white p-5 shadow-lg">
-            <h3 className="text-base font-semibold">添加角色</h3>
+            <h3 className="text-base font-semibold">{t("designer.addRole.title")}</h3>
             <div className="mt-4 space-y-3">
               <div>
-                <label className="block text-xs text-slate-500">角色名称</label>
+                <label className="block text-xs text-slate-500">{t("designer.addRole.nameLabel")}</label>
                 <input
                   type="text"
                   value={newRoleName}
                   onChange={(e) => setNewRoleName(e.target.value)}
-                  placeholder="例如：销售总监"
+                  placeholder={t("designer.addRole.namePlaceholder")}
                   className="mt-1 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-[#714B67]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-500">技术名称</label>
+                <label className="block text-xs text-slate-500">{t("designer.addRole.technicalLabel")}</label>
                 <input
                   type="text"
                   value={newRoleTechnicalName}
                   onChange={(e) => setNewRoleTechnicalName(e.target.value)}
-                  placeholder="例如：group_sales_director"
+                  placeholder={t("designer.addRole.technicalPlaceholder")}
                   className="mt-1 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-[#714B67]"
                 />
               </div>
@@ -596,14 +605,14 @@ export function PermissionDesigner(): React.ReactNode {
                 onClick={() => setIsAddRoleOpen(false)}
                 className="rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
               >
-                取消
+                {t("designer.addRole.cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleAddRole}
                 className="rounded-lg bg-[#714B67] px-3 py-1.5 text-sm text-white hover:bg-[#5C3D54]"
               >
-                确认
+                {t("designer.addRole.confirm")}
               </button>
             </div>
           </div>
@@ -650,6 +659,7 @@ function AccessMap(props: {
   onAddRoleClick: () => void;
   onDeleteRole: (roleId: string) => void;
 }) {
+  const { t } = useI18n();
   const dragRef = useRef<{
     modelId: string;
     startX: number;
@@ -684,14 +694,14 @@ function AccessMap(props: {
       <div className="sticky top-0 z-30 flex h-12 items-center justify-between border-b bg-white/90 px-4 backdrop-blur">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
           <Network className="size-4 text-[#714B67]" />
-          角色—模型—字段有效权限图
+          {t("designer.map.title")}
         </div>
         <label className="relative">
           <Search className="absolute left-2.5 top-2.5 size-4 text-slate-400" />
           <input
             value={props.query}
             onChange={(event) => props.onQueryChange(event.target.value)}
-            placeholder="搜索模型或字段"
+            placeholder={t("designer.map.searchPlaceholder")}
             className="h-9 w-64 rounded-md border bg-white pl-9 pr-3 text-sm outline-none focus:border-[#B88AAE]"
           />
         </label>
@@ -725,14 +735,14 @@ function AccessMap(props: {
         <div className="absolute left-5 top-5 w-40 space-y-4">
           <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-400">
             <div className="flex items-center gap-2">
-              <UsersRound className="size-4" /> 角色
+              <UsersRound className="size-4" /> {t("designer.map.rolesLabel")}
             </div>
             <button
               type="button"
               onClick={props.onAddRoleClick}
               className="rounded-md bg-[#F5E6F0] px-2 py-1 text-[10px] text-[#714B67] hover:bg-[#EBD5E8]"
             >
-              + 添加
+              {t("designer.buttons.add")}
             </button>
           </div>
           {props.project.roles.map((role) => (
@@ -763,7 +773,7 @@ function AccessMap(props: {
                     props.onDeleteRole(role.id);
                   }}
                   className="absolute -right-2 -top-2 hidden rounded-full bg-red-50 p-1 text-red-500 shadow-sm hover:bg-red-100 group-hover:block"
-                  title="删除角色"
+                  title={t("designer.map.deleteRoleTooltip")}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -875,6 +885,7 @@ function ModelInspector(props: {
   onSetFieldAccess: (fieldId: string, value: FieldAccess) => void;
   onSetRecordScope: (value: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <aside className="absolute inset-y-0 right-0 w-[320px] overflow-y-auto border-l bg-white">
       <div className="border-b p-4">
@@ -887,12 +898,13 @@ function ModelInspector(props: {
             <p className="truncate text-xs text-slate-500">{props.model.technicalName}</p>
           </div>
         </div>
-        <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          正在编辑：<strong>{props.roleName}</strong>
-        </div>
+        <div
+          className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600"
+          dangerouslySetInnerHTML={{ __html: t("designer.inspector.editing", props.roleName) }}
+        />
       </div>
 
-      <InspectorSection title="模型 ACL" icon={<LockKeyhole />}>
+      <InspectorSection title={t("designer.inspector.modelAcl")} icon={<LockKeyhole />}>
         <div className="grid grid-cols-4 gap-2">
           {CRUD_LABELS.map(({ key, label }) => {
             const enabled = props.model.accessByRole[props.roleId][key];
@@ -915,19 +927,20 @@ function ModelInspector(props: {
         </div>
       </InspectorSection>
 
-      <InspectorSection title="记录范围" icon={<Braces />}>
+      <InspectorSection title={t("designer.inspector.recordScope")} icon={<Braces />}>
         <textarea
           value={props.model.recordScopeByRole[props.roleId]}
           onChange={(event) => props.onSetRecordScope(event.target.value)}
           rows={5}
           className="w-full rounded-md border bg-slate-950 p-3 font-mono text-[11px] leading-5 text-[#00A09D] outline-none focus:border-[#B88AAE]"
         />
-        <p className="mt-2 text-[11px] leading-4 text-slate-500">
-          该条件将生成 <code>ir.rule.domain_force</code>。上线前需在真实 Odoo 环境验证。
-        </p>
+        <p
+          className="mt-2 text-[11px] leading-4 text-slate-500"
+          dangerouslySetInnerHTML={{ __html: t("designer.inspector.recordScopeHint") }}
+        />
       </InspectorSection>
 
-      <InspectorSection title="字段权限" icon={<TableProperties />}>
+      <InspectorSection title={t("designer.inspector.fieldAccess")} icon={<TableProperties />}>
         <div className="space-y-2">
           {props.model.fields.map((field) => (
             <div key={field.id} className="rounded-lg border p-2.5">
@@ -945,7 +958,7 @@ function ModelInspector(props: {
                 >
                   {FIELD_ACCESS_SEQUENCE.map((access) => (
                     <option key={access} value={access}>
-                      {fieldAccessLabel(access)}
+                      {fieldAccessLabel(access, t)}
                     </option>
                   ))}
                 </select>
@@ -980,13 +993,14 @@ function FieldMatrix(props: {
   onSelectRole: (roleId: string) => void;
   onSetFieldAccess: (modelId: string, fieldId: string, value: FieldAccess) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="absolute inset-0 overflow-auto p-5">
       <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b p-4">
           <div>
-            <h2 className="font-semibold">字段权限矩阵</h2>
-            <p className="mt-1 text-xs text-slate-500">批量比较各角色对字段的隐藏、只读、编辑与脱敏状态。</p>
+            <h2 className="font-semibold">{t("designer.matrix.title")}</h2>
+            <p className="mt-1 text-xs text-slate-500">{t("designer.matrix.subtitle")}</p>
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-1">
             {props.project.roles.map((role) => (
@@ -1008,9 +1022,9 @@ function FieldMatrix(props: {
         <table className="w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500">
             <tr>
-              <th className="border-b px-4 py-3">模型</th>
-              <th className="border-b px-4 py-3">字段</th>
-              <th className="border-b px-4 py-3">技术名称</th>
+              <th className="border-b px-4 py-3">{t("designer.matrix.modelColumn")}</th>
+              <th className="border-b px-4 py-3">{t("designer.matrix.fieldColumn")}</th>
+              <th className="border-b px-4 py-3">{t("designer.matrix.technicalNameColumn")}</th>
               {props.project.roles.map((role) => (
                 <th key={role.id} className="border-b px-3 py-3 text-center">
                   {role.name}
@@ -1044,7 +1058,7 @@ function FieldMatrix(props: {
                       >
                         {FIELD_ACCESS_SEQUENCE.map((access) => (
                           <option key={access} value={access}>
-                            {fieldAccessLabel(access)}
+                            {fieldAccessLabel(access, t)}
                           </option>
                         ))}
                       </select>
@@ -1067,6 +1081,7 @@ function WorkflowDesigner(props: {
   onSetTransitionRole: (roleId: string, enabled: boolean) => void;
   onSetTransitionCondition: (value: string) => void;
 }) {
+  const { t } = useI18n();
   const selectedTransition = props.project.workflow.transitions.find(
     (transition) => transition.id === props.selectedTransitionId,
   );
@@ -1079,11 +1094,13 @@ function WorkflowDesigner(props: {
       <div className="overflow-auto bg-[radial-gradient(circle_at_1px_1px,rgba(148,163,184,.28)_1px,transparent_0)] bg-[size:22px_22px] p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="font-semibold">销售订单状态流程</h2>
-            <p className="mt-1 text-xs text-slate-500">模型：{props.project.workflow.model}</p>
+            <h2 className="font-semibold">{t("designer.workflow.title")}</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              {t("designer.workflow.modelLabel", props.project.workflow.model)}
+            </p>
           </div>
           <span className="rounded-full bg-[#F5E6F0] px-3 py-1 text-xs text-[#714B67]">
-            点击连线配置执行角色
+            {t("designer.workflow.clickHint")}
           </span>
         </div>
         <div className="relative h-[360px] min-w-[980px] rounded-2xl border bg-white/70 shadow-sm backdrop-blur">
@@ -1170,15 +1187,15 @@ function WorkflowDesigner(props: {
         {selectedTransition ? (
           <>
             <div className="mb-4">
-              <div className="text-xs uppercase tracking-wide text-slate-400">流程转换</div>
+              <div className="text-xs uppercase tracking-wide text-slate-400">{t("designer.workflow.transitionLabel")}</div>
               <h3 className="mt-1 font-semibold">{selectedTransition.name}</h3>
               <p className="mt-1 text-xs text-slate-500">
-                {stateById[selectedTransition.from]?.name ?? "未知状态"} →{" "}
-                {stateById[selectedTransition.to]?.name ?? "未知状态"}
+                {stateById[selectedTransition.from]?.name ?? t("designer.workflow.unknownState")} →{" "}
+                {stateById[selectedTransition.to]?.name ?? t("designer.workflow.unknownState")}
               </p>
             </div>
             <div className="border-t py-4">
-              <h4 className="mb-3 text-xs font-semibold text-slate-500">允许执行的角色</h4>
+              <h4 className="mb-3 text-xs font-semibold text-slate-500">{t("designer.workflow.allowedRoles")}</h4>
               <div className="space-y-2">
                 {props.project.roles.map((role) => {
                   const enabled = selectedTransition.allowedRoleIds.includes(role.id);
@@ -1197,7 +1214,7 @@ function WorkflowDesigner(props: {
               </div>
             </div>
             <div className="border-t py-4">
-              <h4 className="mb-2 text-xs font-semibold text-slate-500">前置条件</h4>
+              <h4 className="mb-2 text-xs font-semibold text-slate-500">{t("designer.workflow.precondition")}</h4>
               <textarea
                 value={selectedTransition.condition}
                 onChange={(event) => props.onSetTransitionCondition(event.target.value)}
@@ -1206,7 +1223,7 @@ function WorkflowDesigner(props: {
               />
             </div>
             <div className="border-t py-4">
-              <h4 className="mb-2 text-xs font-semibold text-slate-500">自动动作</h4>
+              <h4 className="mb-2 text-xs font-semibold text-slate-500">{t("designer.workflow.autoActions")}</h4>
               <div className="space-y-2">
                 {selectedTransition.actions.map((action) => (
                   <div key={action} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
@@ -1220,8 +1237,8 @@ function WorkflowDesigner(props: {
         ) : (
           <div className="flex h-full flex-col items-center justify-center text-center text-slate-400">
             <GitBranch className="mb-2 size-8" />
-            <p className="text-sm">暂无流程转换</p>
-            <p className="mt-1 text-xs">点击左侧连线选择一个转换</p>
+            <p className="text-sm">{t("designer.workflow.emptyTitle")}</p>
+            <p className="mt-1 text-xs">{t("designer.workflow.emptyHint")}</p>
           </div>
         )}
       </aside>
@@ -1234,16 +1251,17 @@ function CodeGenerator(props: {
   activeTab: CodeTab;
   onTabChange: (tab: CodeTab) => void;
 }) {
+  const { t } = useI18n();
   const code =
     props.activeTab === "acl"
       ? generateAccessCsv(props.project)
       : props.activeTab === "rules"
         ? generateRecordRulesXml(props.project)
-        : generateFieldSecurityNotes(props.project);
+        : generateFieldSecurityNotes(props.project, t);
 
   const copy = async () => {
     await navigator.clipboard.writeText(code);
-    toast.success("代码已复制");
+    toast.success(t("designer.toast.copySuccess"));
   };
 
   return (
@@ -1251,21 +1269,21 @@ function CodeGenerator(props: {
       <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b p-4">
           <div>
-            <h2 className="font-semibold">Odoo 安全代码生成</h2>
-            <p className="mt-1 text-xs text-slate-500">生成结果是实施草案，仍需结合目标模块 XML ID 进行审核。</p>
+            <h2 className="font-semibold">{t("designer.code.title")}</h2>
+            <p className="mt-1 text-xs text-slate-500">{t("designer.code.subtitle")}</p>
           </div>
           <button
             type="button"
             onClick={copy}
             className="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm hover:bg-slate-50"
           >
-            <Clipboard className="size-4" /> 复制
+            <Clipboard className="size-4" /> {t("designer.buttons.copy")}
           </button>
         </div>
         <div className="flex gap-1 border-b p-2">
-          <CodeTabButton active={props.activeTab === "acl"} onClick={() => props.onTabChange("acl")}>ir.model.access.csv</CodeTabButton>
-          <CodeTabButton active={props.activeTab === "rules"} onClick={() => props.onTabChange("rules")}>security_rules.xml</CodeTabButton>
-          <CodeTabButton active={props.activeTab === "fields"} onClick={() => props.onTabChange("fields")}>字段安全计划</CodeTabButton>
+          <CodeTabButton active={props.activeTab === "acl"} onClick={() => props.onTabChange("acl")}>{t("designer.code.tabs.acl")}</CodeTabButton>
+          <CodeTabButton active={props.activeTab === "rules"} onClick={() => props.onTabChange("rules")}>{t("designer.code.tabs.rules")}</CodeTabButton>
+          <CodeTabButton active={props.activeTab === "fields"} onClick={() => props.onTabChange("fields")}>{t("designer.code.tabs.fields")}</CodeTabButton>
         </div>
         <pre className="min-h-[580px] overflow-auto bg-slate-950 p-5 text-xs leading-5 text-slate-200">
           <code>{code}</code>
@@ -1297,20 +1315,21 @@ function FindingsPanel(props: {
   findings: ValidationFinding[];
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="absolute right-4 top-4 z-50 w-[390px] overflow-hidden rounded-2xl border bg-white shadow-xl">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
-          <h3 className="font-semibold">权限检查结果</h3>
-          <p className="text-xs text-slate-500">{props.findings.length} 项发现</p>
+          <h3 className="font-semibold">{t("designer.findings.title")}</h3>
+          <p className="text-xs text-slate-500">{t("designer.findings.count", props.findings.length)}</p>
         </div>
         <button type="button" onClick={props.onClose} className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100">
-          关闭
+          {t("designer.findings.close")}
         </button>
       </div>
       <div className="max-h-[520px] space-y-2 overflow-y-auto p-3">
         {props.findings.length === 0 ? (
-          <div className="rounded-xl bg-[#E6F4F3] p-4 text-sm text-[#00A09D]">未发现明显的权限配置冲突。</div>
+          <div className="rounded-xl bg-[#E6F4F3] p-4 text-sm text-[#00A09D]">{t("designer.findings.empty")}</div>
         ) : (
           props.findings.map((finding) => (
             <div key={finding.id} className="rounded-xl border p-3">
@@ -1338,6 +1357,7 @@ function FindingsPanel(props: {
 }
 
 function AccessBadge(props: { value: FieldAccess; compact?: boolean }) {
+  const { t } = useI18n();
   const style = {
     hidden: "bg-slate-100 text-slate-500",
     readonly: "bg-orange-50 text-orange-700",
@@ -1347,7 +1367,7 @@ function AccessBadge(props: { value: FieldAccess; compact?: boolean }) {
   return (
     <span className={`inline-flex shrink-0 items-center gap-1 rounded-full ${style} ${props.compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-1 text-[10px]"}`}>
       {props.value === "hidden" ? <EyeOff className="size-2.5" /> : <Eye className="size-2.5" />}
-      {fieldAccessLabel(props.value)}
+      {fieldAccessLabel(props.value, t)}
     </span>
   );
 }
