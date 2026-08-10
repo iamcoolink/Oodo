@@ -4,8 +4,6 @@ import {
   AlertTriangle,
   Bot,
   Braces,
-  Check,
-  ChevronRight,
   CircleUserRound,
   Clipboard,
   Database,
@@ -13,7 +11,6 @@ import {
   Eye,
   EyeOff,
   FileCode2,
-  GitBranch,
   GripVertical,
   KeyRound,
   LockKeyhole,
@@ -22,7 +19,6 @@ import {
   Search,
   TableProperties,
   UsersRound,
-  Workflow,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -56,7 +52,7 @@ import {
   normalizePermissionProject,
 } from "./utils";
 
-type WorkspaceTab = "map" | "matrix" | "workflow" | "code";
+type WorkspaceTab = "map" | "matrix" | "code";
 type CodeTab = "acl" | "rules" | "fields";
 
 const FIELD_ACCESS_SEQUENCE: FieldAccess[] = [
@@ -94,9 +90,6 @@ export function PermissionDesigner(): React.ReactNode {
   const [selectedModelId, setSelectedModelId] = useState(
     project.models[0]?.id ?? "",
   );
-  const [selectedTransitionId, setSelectedTransitionId] = useState(
-    project.workflow.transitions[0]?.id ?? "",
-  );
 
   useEffect(() => {
     const saved = loadSavedProject(t);
@@ -105,7 +98,6 @@ export function PermissionDesigner(): React.ReactNode {
     setSelectedRoleId(saved.roles[0]?.id ?? "");
     setSelectedUserId(saved.users[0]?.id ?? "");
     setSelectedModelId(saved.models[0]?.id ?? "");
-    setSelectedTransitionId(saved.workflow.transitions[0]?.id ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("map");
@@ -126,9 +118,6 @@ export function PermissionDesigner(): React.ReactNode {
   const selectedModel =
     project.models.find((model) => model.id === selectedModelId) ??
     project.models[0]!;
-  const selectedTransition = project.workflow.transitions.find(
-    (transition) => transition.id === selectedTransitionId,
-  );
 
   const findings = useMemo(() => validateProject(project, t), [project, t]);
   const filteredModels = useMemo(() => {
@@ -157,7 +146,6 @@ export function PermissionDesigner(): React.ReactNode {
         selectedRoleId,
         selectedUserId,
         selectedModelId,
-        selectedTransitionId,
         response_contract: {
           format: "permission_patch",
           instruction:
@@ -168,7 +156,6 @@ export function PermissionDesigner(): React.ReactNode {
   }, [
     selectedModelId,
     selectedRoleId,
-    selectedTransitionId,
     selectedUserId,
     setArtifactContext,
   ]);
@@ -267,39 +254,6 @@ export function PermissionDesigner(): React.ReactNode {
     }));
   };
 
-  const setTransitionRole = (roleId: string, enabled: boolean) => {
-    setProject((current) => ({
-      ...current,
-      workflow: {
-        ...current.workflow,
-        transitions: current.workflow.transitions.map((transition) =>
-          transition.id !== selectedTransitionId
-            ? transition
-            : {
-                ...transition,
-                allowedRoleIds: enabled
-                  ? Array.from(new Set([...transition.allowedRoleIds, roleId]))
-                  : transition.allowedRoleIds.filter((id) => id !== roleId),
-              },
-        ),
-      },
-    }));
-  };
-
-  const setTransitionCondition = (value: string) => {
-    setProject((current) => ({
-      ...current,
-      workflow: {
-        ...current.workflow,
-        transitions: current.workflow.transitions.map((transition) =>
-          transition.id === selectedTransitionId
-            ? { ...transition, condition: value }
-            : transition,
-        ),
-      },
-    }));
-  };
-
   const moveModel = (modelId: string, x: number, y: number) => {
     updateModel(modelId, (model) => ({ ...model, position: { x, y } }));
   };
@@ -343,7 +297,6 @@ export function PermissionDesigner(): React.ReactNode {
         setSelectedRoleId(imported.roles[0]?.id ?? project.roles[0].id);
         setSelectedUserId(imported.users[0]?.id ?? project.users[0].id);
         setSelectedModelId(imported.models[0]?.id ?? "");
-        setSelectedTransitionId(imported.workflow.transitions[0]?.id ?? "");
         toast.success(t("designer.toast.importSuccess"), {
           description: t(
             "designer.toast.importSuccessDesc",
@@ -469,9 +422,6 @@ export function PermissionDesigner(): React.ReactNode {
           <TabButton active={activeTab === "matrix"} onClick={() => setActiveTab("matrix")} icon={<TableProperties />}>
             {t("designer.tabs.matrix")}
           </TabButton>
-          <TabButton active={activeTab === "workflow"} onClick={() => setActiveTab("workflow")} icon={<Workflow />}>
-            {t("designer.tabs.workflow")}
-          </TabButton>
           <TabButton active={activeTab === "code"} onClick={() => setActiveTab("code")} icon={<FileCode2 />}>
             {t("designer.tabs.code")}
           </TabButton>
@@ -527,15 +477,6 @@ export function PermissionDesigner(): React.ReactNode {
             selectedRoleId={selectedRoleId}
             onSelectRole={setSelectedRoleId}
             onSetFieldAccess={setFieldAccess}
-          />
-        )}
-        {activeTab === "workflow" && (
-          <WorkflowDesigner
-            project={project}
-            selectedTransitionId={selectedTransitionId}
-            onSelectTransition={setSelectedTransitionId}
-            onSetTransitionRole={setTransitionRole}
-            onSetTransitionCondition={setTransitionCondition}
           />
         )}
         {activeTab === "code" && (
@@ -1073,178 +1014,6 @@ function FieldMatrix(props: {
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function WorkflowDesigner(props: {
-  project: PermissionProject;
-  selectedTransitionId: string;
-  onSelectTransition: (transitionId: string) => void;
-  onSetTransitionRole: (roleId: string, enabled: boolean) => void;
-  onSetTransitionCondition: (value: string) => void;
-}) {
-  const { t } = useI18n();
-  const selectedTransition = props.project.workflow.transitions.find(
-    (transition) => transition.id === props.selectedTransitionId,
-  );
-  const stateById = Object.fromEntries(
-    props.project.workflow.states.map((state) => [state.id, state]),
-  );
-
-  return (
-    <div className="absolute inset-0 grid grid-cols-[1fr_320px] overflow-hidden">
-      <div className="overflow-auto bg-[radial-gradient(circle_at_1px_1px,rgba(148,163,184,.28)_1px,transparent_0)] bg-[size:22px_22px] p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="font-semibold">{t("designer.workflow.title")}</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              {t("designer.workflow.modelLabel", props.project.workflow.model)}
-            </p>
-          </div>
-          <span className="rounded-full bg-[#F5E6F0] px-3 py-1 text-xs text-[#714B67]">
-            {t("designer.workflow.clickHint")}
-          </span>
-        </div>
-        <div className="relative h-[360px] min-w-[980px] rounded-2xl border bg-white/70 shadow-sm backdrop-blur">
-          <svg className="absolute inset-0 size-full">
-            <defs>
-              <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                <polygon points="0 0, 8 3, 0 6" fill="#94a3b8" />
-              </marker>
-            </defs>
-            {props.project.workflow.transitions.map((transition) => {
-              const from = stateById[transition.from];
-              const to = stateById[transition.to];
-              if (!from || !to) return null;
-              const selected = transition.id === props.selectedTransitionId;
-              return (
-                <g key={transition.id} onClick={() => props.onSelectTransition(transition.id)} className="cursor-pointer">
-                  <line
-                    x1={from.x + 120}
-                    y1={from.y + 34}
-                    x2={to.x - 12}
-                    y2={to.y + 34}
-                    stroke={selected ? "#714B67" : "#94a3b8"}
-                    strokeWidth={selected ? 3 : 2}
-                    markerEnd="url(#arrowhead)"
-                  />
-                  <rect
-                    x={(from.x + to.x) / 2 - 42}
-                    y={from.y - 6}
-                    width="84"
-                    height="24"
-                    rx="12"
-                    fill={selected ? "#ede9fe" : "white"}
-                    stroke={selected ? "#714B67" : "#cbd5e1"}
-                  />
-                  <text
-                    x={(from.x + to.x) / 2}
-                    y={from.y + 10}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill={selected ? "#6d28d9" : "#475569"}
-                  >
-                    {transition.name}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-          {props.project.workflow.states.map((state) => (
-            <div
-              key={state.id}
-              className="absolute w-[120px] rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm"
-              style={{ left: state.x, top: state.y }}
-            >
-              <div className="mx-auto mb-2 grid size-7 place-items-center rounded-full bg-[#F5E6F0] text-[#714B67]">
-                <GitBranch className="size-3.5" />
-              </div>
-              <div className="text-sm font-semibold">{state.name}</div>
-              <div className="mt-1 font-mono text-[10px] text-slate-400">{state.technicalValue}</div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-4">
-          {props.project.workflow.transitions.map((transition) => (
-            <button
-              key={transition.id}
-              type="button"
-              onClick={() => props.onSelectTransition(transition.id)}
-              className={`rounded-xl border bg-white p-4 text-left shadow-sm ${
-                transition.id === props.selectedTransitionId
-                  ? "border-[#B88AAE] ring-2 ring-[#F5E6F0]"
-                  : "border-slate-200"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">{transition.name}</span>
-                <ChevronRight className="size-4 text-slate-400" />
-              </div>
-              <p className="mt-2 line-clamp-2 text-xs text-slate-500">{transition.condition}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-      <aside className="overflow-y-auto border-l bg-white p-4">
-        {selectedTransition ? (
-          <>
-            <div className="mb-4">
-              <div className="text-xs uppercase tracking-wide text-slate-400">{t("designer.workflow.transitionLabel")}</div>
-              <h3 className="mt-1 font-semibold">{selectedTransition.name}</h3>
-              <p className="mt-1 text-xs text-slate-500">
-                {stateById[selectedTransition.from]?.name ?? t("designer.workflow.unknownState")} →{" "}
-                {stateById[selectedTransition.to]?.name ?? t("designer.workflow.unknownState")}
-              </p>
-            </div>
-            <div className="border-t py-4">
-              <h4 className="mb-3 text-xs font-semibold text-slate-500">{t("designer.workflow.allowedRoles")}</h4>
-              <div className="space-y-2">
-                {props.project.roles.map((role) => {
-                  const enabled = selectedTransition.allowedRoleIds.includes(role.id);
-                  return (
-                    <label key={role.id} className="flex cursor-pointer items-center justify-between rounded-lg border p-2.5">
-                      <span className="text-sm">{role.name}</span>
-                      <input
-                        type="checkbox"
-                        checked={enabled}
-                        onChange={(event) => props.onSetTransitionRole(role.id, event.target.checked)}
-                        className="size-4 accent-[#714B67]"
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="border-t py-4">
-              <h4 className="mb-2 text-xs font-semibold text-slate-500">{t("designer.workflow.precondition")}</h4>
-              <textarea
-                value={selectedTransition.condition}
-                onChange={(event) => props.onSetTransitionCondition(event.target.value)}
-                rows={4}
-                className="w-full rounded-lg border p-3 text-xs leading-5 outline-none focus:border-[#B88AAE]"
-              />
-            </div>
-            <div className="border-t py-4">
-              <h4 className="mb-2 text-xs font-semibold text-slate-500">{t("designer.workflow.autoActions")}</h4>
-              <div className="space-y-2">
-                {selectedTransition.actions.map((action) => (
-                  <div key={action} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                    <Check className="size-3.5 text-[#00A09D]" />
-                    {action}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center text-center text-slate-400">
-            <GitBranch className="mb-2 size-8" />
-            <p className="text-sm">{t("designer.workflow.emptyTitle")}</p>
-            <p className="mt-1 text-xs">{t("designer.workflow.emptyHint")}</p>
-          </div>
-        )}
-      </aside>
     </div>
   );
 }
