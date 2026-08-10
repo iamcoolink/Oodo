@@ -106,6 +106,7 @@ export function PermissionDesigner(): React.ReactNode {
     setSelectedUserId(saved.users[0]?.id ?? "");
     setSelectedModelId(saved.models[0]?.id ?? "");
     setSelectedTransitionId(saved.workflow.transitions[0]?.id ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("map");
   const [codeTab, setCodeTab] = useState<CodeTab>("acl");
@@ -145,11 +146,14 @@ export function PermissionDesigner(): React.ReactNode {
     );
   }, [project.models, query]);
 
+  const projectRef = useRef(project);
+  projectRef.current = project;
+
   useEffect(() => {
     setArtifactContext((current) => ({
       ...current,
       permission_design: {
-        project,
+        project: projectRef.current,
         selectedRoleId,
         selectedUserId,
         selectedModelId,
@@ -162,7 +166,6 @@ export function PermissionDesigner(): React.ReactNode {
       },
     }));
   }, [
-    project,
     selectedModelId,
     selectedRoleId,
     selectedTransitionId,
@@ -198,7 +201,7 @@ export function PermissionDesigner(): React.ReactNode {
       }
       return nextProject;
     });
-  }, [stream.messages]);
+  }, [stream.messages, t]);
 
   const updateModel = (modelId: string, updater: (model: ModelDefinition) => ModelDefinition) => {
     setProject((current) => ({

@@ -47,6 +47,24 @@ export interface ModelDefinition {
   fields: FieldDefinition[];
 }
 
+export interface WorkflowStateDefinition {
+  id: string;
+  name: string;
+  technicalValue: string;
+  x: number;
+  y: number;
+}
+
+export interface WorkflowTransitionDefinition {
+  id: string;
+  name: string;
+  from: string;
+  to: string;
+  allowedRoleIds: string[];
+  condition: string;
+  actions: string[];
+}
+
 export interface PermissionProject {
   id: string;
   name: string;
@@ -54,6 +72,11 @@ export interface PermissionProject {
   roles: RoleDefinition[];
   users: UserDefinition[];
   models: ModelDefinition[];
+  workflow: {
+    model: string;
+    states: WorkflowStateDefinition[];
+    transitions: WorkflowTransitionDefinition[];
+  };
 }
 
 export type PermissionPatchOperation =

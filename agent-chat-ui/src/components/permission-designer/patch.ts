@@ -287,5 +287,24 @@ export function validateProject(
     }
   }
 
+  for (const transition of project.workflow.transitions) {
+    if (transition.allowedRoleIds.length === 0) {
+      findings.push({
+        id: `${transition.id}-no-role`,
+        severity: "error",
+        title: t("errors.noRoleForTransition", transition.name),
+        detail: t("errors.noRoleForTransitionDetail"),
+      });
+    }
+    if (!transition.condition.trim()) {
+      findings.push({
+        id: `${transition.id}-no-condition`,
+        severity: "info",
+        title: t("errors.noConditionForTransition", transition.name),
+        detail: t("errors.noConditionForTransitionDetail"),
+      });
+    }
+  }
+
   return findings;
 }

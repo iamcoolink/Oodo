@@ -20,17 +20,6 @@ export interface I18nContextValue {
 
 export const I18nContext = createContext<I18nContextValue | null>(null);
 
-function getInitialLanguage(): Language {
-  if (typeof window === "undefined") return "en";
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "zh" || saved === "en") return saved;
-  } catch {
-    // ignore
-  }
-  return "en";
-}
-
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>("en");
 
