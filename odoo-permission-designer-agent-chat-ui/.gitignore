@@ -1,0 +1,40 @@
+# Environment files
+.env
+.env.*
+backend/.env
+backend/.env.*
+frontend-overlay/.env
+frontend-overlay/.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.venv/
+backend/.venv/
+
+# Node / Next.js
+node_modules/
+.next/
+backend/.next/
+dist/
+build/
+coverage/
+
+# IDE / editor
+.idea/
+.vscode/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# LangGraph / local runtime artifacts
+backend/.langgraph_api/
+backend/odoo_permission_agent.egg-info/
