@@ -107,7 +107,7 @@ export function PermissionDesigner(): React.ReactNode {
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleTechnicalName, setNewRoleTechnicalName] = useState("");
-  const [artifactContext, setArtifactContext] = useArtifactContext();
+  const [, setArtifactContext] = useArtifactContext();
   const stream = useStreamContext();
   const appliedMessageIdRef = useRef<string | null>(null);
 
@@ -618,8 +618,8 @@ function AccessMap(props: {
       if (!drag) return;
       props.onMoveModel(
         drag.modelId,
-        Math.max(220, Math.min(850, drag.originX + event.clientX - drag.startX)),
-        Math.max(20, Math.min(430, drag.originY + event.clientY - drag.startY)),
+        Math.max(20, Math.min(1180, drag.originX + event.clientX - drag.startX)),
+        Math.max(20, Math.min(560, drag.originY + event.clientY - drag.startY)),
       );
     };
     const up = () => {
@@ -650,7 +650,7 @@ function AccessMap(props: {
           />
         </label>
       </div>
-      <div className="relative h-[610px] min-w-[1040px]">
+      <div className="relative h-[610px] min-w-full">
         <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden="true">
           {props.project.roles.flatMap((role, roleIndex) =>
             props.filteredModels.map((model) => {
