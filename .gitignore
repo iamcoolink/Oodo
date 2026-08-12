@@ -47,3 +47,4 @@ htmlcov/
 *.sqlite3
 *.db
 *.pid
+odoo-permission-designer-agent-chat-ui/backend/.langgraph_api/
