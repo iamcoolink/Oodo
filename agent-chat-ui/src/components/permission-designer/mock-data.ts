@@ -16,17 +16,17 @@ const fieldAccess = (
 
 export const initialPermissionProject: PermissionProject = {
   id: "odoo-access-studio-demo",
-  name: "Odoo 销售订单权限设计",
+  name: "Odoo Sales Order Permission Design",
   odooVersion: "19.0",
   roles: [
-    { id: "sales", name: "销售人员", technicalName: "group_sale_user" },
+    { id: "sales", name: "Sales Person", technicalName: "group_sale_user" },
     {
       id: "manager",
-      name: "销售经理",
+      name: "Sales Manager",
       technicalName: "group_sale_manager",
     },
-    { id: "finance", name: "财务人员", technicalName: "group_account_user" },
-    { id: "warehouse", name: "仓库人员", technicalName: "group_stock_user" },
+    { id: "finance", name: "Accountant", technicalName: "group_account_user" },
+    { id: "warehouse", name: "Warehouse Staff", technicalName: "group_stock_user" },
   ],
   users: [
     {
@@ -54,7 +54,7 @@ export const initialPermissionProject: PermissionProject = {
   models: [
     {
       id: "partner",
-      name: "客户",
+      name: "Customer",
       technicalName: "res.partner",
       module: "Contacts",
       position: { x: 270, y: 42 },
@@ -73,21 +73,21 @@ export const initialPermissionProject: PermissionProject = {
       fields: [
         {
           id: "partner_name",
-          name: "客户名称",
+          name: "Customer Name",
           technicalName: "name",
           fieldType: "char",
           accessByRole: fieldAccess("editable", "editable", "readonly", "readonly"),
         },
         {
           id: "partner_phone",
-          name: "电话",
+          name: "Phone",
           technicalName: "phone",
           fieldType: "char",
           accessByRole: fieldAccess("editable", "editable", "masked", "hidden"),
         },
         {
           id: "partner_credit",
-          name: "信用额度",
+          name: "Credit Limit",
           technicalName: "credit_limit",
           fieldType: "monetary",
           accessByRole: fieldAccess("hidden", "readonly", "editable", "hidden"),
@@ -96,7 +96,7 @@ export const initialPermissionProject: PermissionProject = {
     },
     {
       id: "sale_order",
-      name: "销售订单",
+      name: "Sales Order",
       technicalName: "sale.order",
       module: "Sales",
       position: { x: 530, y: 190 },
@@ -115,7 +115,7 @@ export const initialPermissionProject: PermissionProject = {
       fields: [
         {
           id: "order_partner",
-          name: "客户",
+          name: "Customer",
           technicalName: "partner_id",
           fieldType: "many2one",
           relation: "res.partner",
@@ -123,21 +123,21 @@ export const initialPermissionProject: PermissionProject = {
         },
         {
           id: "order_amount",
-          name: "销售金额",
+          name: "Sales Amount",
           technicalName: "amount_total",
           fieldType: "monetary",
           accessByRole: fieldAccess("editable", "editable", "readonly", "readonly"),
         },
         {
           id: "order_margin",
-          name: "毛利率",
+          name: "Margin Rate",
           technicalName: "margin_percent",
           fieldType: "float",
           accessByRole: fieldAccess("hidden", "readonly", "readonly", "hidden"),
         },
         {
           id: "order_state",
-          name: "状态",
+          name: "State",
           technicalName: "state",
           fieldType: "selection",
           accessByRole: fieldAccess("readonly", "readonly", "readonly", "readonly"),
@@ -146,7 +146,7 @@ export const initialPermissionProject: PermissionProject = {
     },
     {
       id: "invoice",
-      name: "客户发票",
+      name: "Customer Invoice",
       technicalName: "account.move",
       module: "Accounting",
       position: { x: 800, y: 48 },
@@ -165,7 +165,7 @@ export const initialPermissionProject: PermissionProject = {
       fields: [
         {
           id: "invoice_partner",
-          name: "客户",
+          name: "Customer",
           technicalName: "partner_id",
           fieldType: "many2one",
           relation: "res.partner",
@@ -173,14 +173,14 @@ export const initialPermissionProject: PermissionProject = {
         },
         {
           id: "invoice_amount",
-          name: "发票金额",
+          name: "Invoice Amount",
           technicalName: "amount_total",
           fieldType: "monetary",
           accessByRole: fieldAccess("readonly", "readonly", "editable", "hidden"),
         },
         {
           id: "invoice_payment",
-          name: "付款状态",
+          name: "Payment Status",
           technicalName: "payment_state",
           fieldType: "selection",
           accessByRole: fieldAccess("readonly", "readonly", "editable", "hidden"),
@@ -189,7 +189,7 @@ export const initialPermissionProject: PermissionProject = {
     },
     {
       id: "picking",
-      name: "交付单",
+      name: "Delivery Order",
       technicalName: "stock.picking",
       module: "Inventory",
       position: { x: 300, y: 365 },
@@ -208,14 +208,14 @@ export const initialPermissionProject: PermissionProject = {
       fields: [
         {
           id: "picking_origin",
-          name: "来源单据",
+          name: "Source Document",
           technicalName: "origin",
           fieldType: "char",
           accessByRole: fieldAccess("readonly", "readonly", "hidden", "readonly"),
         },
         {
           id: "picking_partner",
-          name: "交付地址",
+          name: "Delivery Address",
           technicalName: "partner_id",
           fieldType: "many2one",
           relation: "res.partner",
@@ -223,7 +223,7 @@ export const initialPermissionProject: PermissionProject = {
         },
         {
           id: "picking_state",
-          name: "状态",
+          name: "State",
           technicalName: "state",
           fieldType: "selection",
           accessByRole: fieldAccess("readonly", "readonly", "hidden", "editable"),
@@ -234,48 +234,48 @@ export const initialPermissionProject: PermissionProject = {
   workflow: {
     model: "sale.order",
     states: [
-      { id: "draft", name: "草稿", technicalValue: "draft", x: 55, y: 150 },
-      { id: "sent", name: "已报价", technicalValue: "sent", x: 245, y: 150 },
-      { id: "approval", name: "待审批", technicalValue: "approval", x: 435, y: 150 },
-      { id: "sale", name: "已确认", technicalValue: "sale", x: 625, y: 150 },
-      { id: "done", name: "已完成", technicalValue: "done", x: 815, y: 150 },
+      { id: "draft", name: "Draft", technicalValue: "draft", x: 55, y: 150 },
+      { id: "sent", name: "Quoted", technicalValue: "sent", x: 245, y: 150 },
+      { id: "approval", name: "Pending Approval", technicalValue: "approval", x: 435, y: 150 },
+      { id: "sale", name: "Confirmed", technicalValue: "sale", x: 625, y: 150 },
+      { id: "done", name: "Done", technicalValue: "done", x: 815, y: 150 },
     ],
     transitions: [
       {
         id: "send_quote",
-        name: "发送报价",
+        name: "Send Quotation",
         from: "draft",
         to: "sent",
         allowedRoleIds: ["sales", "manager"],
-        condition: "订单至少包含一个产品行",
-        actions: ["发送报价邮件", "记录报价时间"],
+        condition: "Order must contain at least one product line",
+        actions: ["Send quotation email", "Record quotation time"],
       },
       {
         id: "request_approval",
-        name: "提交审批",
+        name: "Submit for Approval",
         from: "sent",
         to: "approval",
         allowedRoleIds: ["sales", "manager"],
-        condition: "订单金额 > 100000 或折扣 > 15%",
-        actions: ["创建审批活动", "通知销售经理"],
+        condition: "Order amount > 100000 or discount > 15%",
+        actions: ["Create approval activity", "Notify sales manager"],
       },
       {
         id: "approve_order",
-        name: "批准订单",
+        name: "Approve Order",
         from: "approval",
         to: "sale",
         allowedRoleIds: ["manager"],
-        condition: "客户信用状态正常",
-        actions: ["锁定销售价格", "创建交付单", "通知仓库"],
+        condition: "Customer credit status is normal",
+        actions: ["Lock sales price", "Create delivery order", "Notify warehouse"],
       },
       {
         id: "complete_order",
-        name: "完成订单",
+        name: "Complete Order",
         from: "sale",
         to: "done",
         allowedRoleIds: ["manager", "warehouse", "finance"],
-        condition: "交付完成且发票已过账",
-        actions: ["写入完成时间"],
+        condition: "Delivery completed and invoice posted",
+        actions: ["Write completion time"],
       },
     ],
   },
