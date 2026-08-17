@@ -37,7 +37,7 @@ one fenced block in this format:
 
 ```permission_patch
 {
-  "summary": "Chinese summary of the applied change",
+  "summary": "Brief summary of the applied change",
   "operations": [
     {
       "op": "set_model_access",
@@ -66,7 +66,7 @@ Supported operations:
 - move_model(modelId, x, y)
 
 For questions that do not request a visual change, do not emit a permission_patch.
-Return concise Chinese unless the user uses another language.
+Respond in the same language the user writes in: if the user writes in English, reply in English; if the user writes in Chinese, reply in Chinese.
 """.strip()
 
 

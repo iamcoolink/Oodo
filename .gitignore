@@ -53,3 +53,4 @@ odoo-permission-designer-agent-chat-ui/backend/.langgraph_api/
 *.pckl
 *.pickle
 **/.langgraph_api/**
+odoo-permission-designer-agent-chat-ui/backend/.langgraph_api/*.pckl
