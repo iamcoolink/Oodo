@@ -52,4 +52,5 @@ odoo-permission-designer-agent-chat-ui/backend/.langgraph_api/
 # pickle缓存文件
 *.pckl
 *.pickle
+**/.langgraph_api/**
 odoo-permission-designer-agent-chat-ui/backend/.langgraph_api/*.pckl
