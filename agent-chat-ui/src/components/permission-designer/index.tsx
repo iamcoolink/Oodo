@@ -20,7 +20,7 @@ import {
   TableProperties,
   UsersRound,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useArtifactContext } from "@/components/thread/artifact";
@@ -612,6 +612,43 @@ function AccessMap(props: {
     originY: number;
   } | null>(null);
 
+  // Measure actual DOM positions of role cards for accurate SVG line endpoints
+  const roleCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [rolePositions, setRolePositions] = useState<Map<string, { x: number; y: number; h: number }>>(new Map());
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const containerRect = container.getBoundingClientRect();
+      const newPositions = new Map<string, { x: number; y: number; h: number }>();
+      for (const role of props.project.roles) {
+        const el = roleCardRefs.current.get(role.id);
+        if (el) {
+          const r = el.getBoundingClientRect();
+          newPositions.set(role.id, {
+            x: r.right - containerRect.left,
+            y: r.top - containerRect.top,
+            h: r.height,
+          });
+        }
+      }
+      setRolePositions(newPositions);
+    };
+
+    measure();
+
+    // Observe role card size changes (e.g., delete button appearing on hover)
+    const observer = new ResizeObserver(measure);
+    for (const el of roleCardRefs.current.values()) {
+      observer.observe(el);
+    }
+
+    return () => observer.disconnect();
+  }, [props.project.roles]);
+
   useEffect(() => {
     const move = (event: PointerEvent) => {
       const drag = dragRef.current;
@@ -650,14 +687,16 @@ function AccessMap(props: {
           />
         </label>
       </div>
-      <div className="relative h-[610px] min-w-full">
+      <div ref={containerRef} className="relative h-[610px] min-w-full">
         <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden="true">
-          {props.project.roles.flatMap((role, roleIndex) =>
-            props.filteredModels.map((model) => {
+          {props.project.roles.map((role) => {
+            const pos = rolePositions.get(role.id);
+            if (!pos) return null;
+            return props.filteredModels.map((model) => {
               const access = model.accessByRole[role.id];
               if (!access?.read) return null;
-              const startX = 180;
-              const startY = 82 + roleIndex * 112;
+              const startX = pos.x;
+              const startY = pos.y + pos.h / 2;
               const endX = model.position.x;
               const endY = model.position.y + 58;
               const selected = role.id === props.selectedRoleId;
@@ -672,8 +711,8 @@ function AccessMap(props: {
                   opacity={selected ? 0.9 : 0.42}
                 />
               );
-            }),
-          )}
+            });
+          })}
         </svg>
 
         <div className="absolute left-5 top-5 w-40 space-y-4">
@@ -692,6 +731,10 @@ function AccessMap(props: {
           {props.project.roles.map((role) => (
             <div
               key={role.id}
+              ref={(el) => {
+                if (el) roleCardRefs.current.set(role.id, el);
+                else roleCardRefs.current.delete(role.id);
+              }}
               className={`group relative w-full rounded-xl border p-3 text-left shadow-sm transition ${
                 role.id === props.selectedRoleId
                   ? "border-[#B88AAE] bg-[#F5E6F0] ring-2 ring-[#F5E6F0]"

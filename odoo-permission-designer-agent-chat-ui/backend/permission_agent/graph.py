@@ -229,10 +229,10 @@ def _extract_target_model(
     return None
 
 
-def _extract_target_role(
+def _extract_target_roles(
     user_text: str, project: dict[str, Any]
-) -> dict[str, str] | None:
-    """Try to identify which role the user is referring to."""
+) -> list[dict[str, str]]:
+    """Try to identify ALL roles the user is referring to (supports multiple roles)."""
     text_lower = user_text.lower()
     roles = project.get("roles", [])
 
@@ -270,10 +270,17 @@ def _extract_target_role(
                     candidates.append((50, rid, {"id": rid, "name": r.get("name", rid)}))
 
     if not candidates:
-        return None
+        return []
 
     candidates.sort(key=lambda x: x[0], reverse=True)
-    return candidates[0][2]
+    # Deduplicate by role id, keep highest quality
+    seen: set[str] = set()
+    result = []
+    for _, rid, info in candidates:
+        if rid not in seen:
+            seen.add(rid)
+            result.append(info)
+    return result
 
 
 def _extract_operations(user_text: str) -> list[str]:
@@ -292,37 +299,82 @@ def _extract_operations(user_text: str) -> list[str]:
     return ops
 
 
+def _extract_target_all_models(user_text: str) -> bool:
+    """Check if the user is requesting operations on ALL models."""
+    text_lower = user_text.lower()
+    all_model_keywords = [
+        "全部模型", "所有模型", "全部表", "所有表",
+        "all models", "every model", "all tables",
+    ]
+    return any(kw in text_lower for kw in all_model_keywords)
+
+
+def _split_multi_sentence_requests(user_text: str) -> list[str]:
+    """Split user text into separate requests if it contains multiple sentences.
+
+    Detects patterns like:
+    - "取消角色A对全部模型的权限。取消角色B对全部模型的权限。"
+    - "授予X权限。授予Y权限。"
+    """
+    # Split by Chinese period, English period, or newline
+    sentences = re.split(r'[。.\n]+', user_text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    # Only split if there are multiple sentences AND each sentence contains
+    # a role-related keyword (indicating separate requests)
+    if len(sentences) <= 1:
+        return [user_text]
+
+    role_keywords = ["角色", "role", "manager", "accountant", "sales", "warehouse", "销售", "财务", "仓库"]
+    multi_request_sentences = []
+    for s in sentences:
+        s_lower = s.lower()
+        if any(kw in s_lower for kw in role_keywords):
+            multi_request_sentences.append(s)
+
+    # If we found multiple role-related sentences, return them separately
+    if len(multi_request_sentences) > 1:
+        return multi_request_sentences
+
+    return [user_text]
+
+
 def extract_intent(
     user_text: str, design: dict[str, Any]
 ) -> dict[str, Any]:
     """Extract structured intent from user message.
 
-    Priority: selectedModelId from UI > text-based extraction.
+    Priority: text-based extraction > selectedModelId from UI.
+    When the user explicitly mentions a model in their text, use that.
+    Only fall back to UI selected model when text doesn't mention any model.
     """
     project = _get_project(design)
     display_map = _build_model_display(project)
 
-    # 1. Check selectedModelId first — strongest signal
-    selected_model_id = design.get("selectedModelId")
-    target_model = None
-    if selected_model_id:
-        model_exists = any(m.get("id") == selected_model_id for m in project.get("models", []))
-        if model_exists:
-            target_model = {
-                "id": selected_model_id,
-                "display": display_map.get(selected_model_id, selected_model_id),
-            }
+    # Detect "all models" request
+    target_all_models = _extract_target_all_models(user_text)
 
-    # 2. Fall back to text-based extraction
-    if not target_model:
-        target_model = _extract_target_model(user_text, project)
+    # 1. Text-based extraction first — user's explicit mention is strongest signal
+    target_model = _extract_target_model(user_text, project)
 
-    target_role = _extract_target_role(user_text, project)
+    # 2. Fall back to UI selectedModelId only if text doesn't mention any model
+    if not target_model and not target_all_models:
+        selected_model_id = design.get("selectedModelId")
+        if selected_model_id:
+            model_exists = any(m.get("id") == selected_model_id for m in project.get("models", []))
+            if model_exists:
+                target_model = {
+                    "id": selected_model_id,
+                    "display": display_map.get(selected_model_id, selected_model_id),
+                }
+
+    target_roles = _extract_target_roles(user_text, project)
     operations = _extract_operations(user_text)
 
     return {
         "target_model": target_model,
-        "target_role": target_role,
+        "target_all_models": target_all_models,
+        "target_roles": target_roles,
         "operations": operations,
         "raw_text": user_text,
     }
@@ -394,26 +446,35 @@ def _build_intent_anchor(intent: dict[str, Any]) -> str:
     lines: list[str] = []
 
     tm = intent.get("target_model")
+    target_all_models = intent.get("target_all_models", False)
     if tm:
         lines.append(f"  TARGET MODEL ID: {tm['id']}")
         lines.append(f"  TARGET MODEL NAME: {tm.get('display', 'N/A')}")
+    elif target_all_models:
+        lines.append("  TARGET: ALL MODELS — generate operations for EVERY model in the design.")
     else:
         lines.append("  TARGET MODEL: No target model detected yet — parse the user's latest message carefully.")
 
-    tr = intent.get("target_role")
-    if tr:
-        lines.append(f"  TARGET ROLE ID: {tr['id']}")
-        lines.append(f"  TARGET ROLE NAME: {tr.get('name', 'N/A')}")
+    target_roles = intent.get("target_roles", [])
+    if target_roles:
+        role_ids = ", ".join(r["id"] for r in target_roles)
+        role_names = ", ".join(r.get("name", r["id"]) for r in target_roles)
+        lines.append(f"  TARGET ROLE IDs: {role_ids}")
+        lines.append(f"  TARGET ROLE NAMES: {role_names}")
+        lines.append("  INSTRUCTION: Generate operations for ALL target roles listed above.")
+    else:
+        lines.append("  TARGET ROLE: No target role detected yet — parse the user's latest message carefully.")
 
     ops = intent.get("operations", [])
     if ops:
         lines.append(f"  REQUESTED OPERATIONS: {', '.join(ops)}")
 
-    lines.append(
-        "  INSTRUCTION: Your permission_patch MUST only operate on the TARGET MODEL ID above. "
-        "NEVER substitute a different model (e.g. do NOT use 'sale_order' when the target is 'picking'). "
-        "Double-check every modelId in your output against the TARGET MODEL ID."
-    )
+    if tm and not target_all_models:
+        lines.append(
+            "  INSTRUCTION: Your permission_patch MUST only operate on the TARGET MODEL ID above. "
+            "NEVER substitute a different model (e.g. do NOT use 'sale_order' when the target is 'picking'). "
+            "Double-check every modelId in your output against the TARGET MODEL ID."
+        )
 
     return INTENT_ANCHOR_PROMPT.format(
         TARGET_BLOCK="\n".join(lines)
@@ -563,79 +624,182 @@ def _truncate_history(messages: list[BaseMessage], max_turns: int) -> list[BaseM
 # Single graph node (simplified — no separate intent_router node)
 # ---------------------------------------------------------------------------
 
+def _build_patch_from_intent(intent: dict[str, Any], project: dict[str, Any]) -> dict[str, Any] | None:
+    """Build a complete permission patch directly from intent, bypassing model generation.
+
+    Used when the intent is clear enough (specific roles, models, operations) that
+    we can deterministically generate the patch without relying on the model.
+    """
+    target_roles = intent.get("target_roles", [])
+    target_model = intent.get("target_model")
+    target_all_models = intent.get("target_all_models", False)
+    operations = intent.get("operations", [])
+
+    if not target_roles or not operations:
+        return None
+
+    # Determine which models to operate on
+    if target_all_models:
+        model_ids = [m["id"] for m in project.get("models", [])]
+    elif target_model:
+        model_ids = [target_model["id"]]
+    else:
+        return None
+
+    # Determine the value: "取消" means false, "授予" means true
+    text_lower = intent.get("raw_text", "").lower()
+    is_cancel = any(kw in text_lower for kw in ["取消", "移除", "remove", "revoke", "deny", "禁止"])
+    value = not is_cancel
+
+    # Build operations: for each role × each model × each operation
+    ops: list[dict[str, Any]] = []
+    for role in target_roles:
+        for model_id in model_ids:
+            for op_name in operations:
+                ops.append({
+                    "op": "set_model_access",
+                    "roleId": role["id"],
+                    "modelId": model_id,
+                    "operation": op_name,
+                    "value": value,
+                })
+
+    action = "取消" if is_cancel else "授予"
+    role_names = ", ".join(r.get("name", r["id"]) for r in target_roles)
+    if target_all_models:
+        model_desc = "全部模型"
+    else:
+        model_desc = target_model.get("display", target_model["id"])
+    op_names = ", ".join(operations)
+
+    return {
+        "summary": f"{action} {role_names} 对 {model_desc} 的 {op_names} 权限",
+        "operations": ops,
+    }
+
+
+def _process_single_request(
+    sentence: str,
+    design: dict[str, Any],
+    project: dict[str, Any],
+    history_messages: list[BaseMessage],
+    compressed_design_json: str,
+) -> tuple[str, dict[str, Any] | None]:
+    """Process a single sentence request and return (response_text, patch)."""
+    intent = extract_intent(sentence, design) if sentence else {}
+
+    # Try to build patch directly from intent (deterministic, no model needed)
+    direct_patch = _build_patch_from_intent(intent, project)
+
+    # Still call model for text explanation
+    intent_anchor = _build_intent_anchor(intent) if intent else ""
+    system_content = (
+        SYSTEM_PROMPT
+        + "\n\n"
+        + intent_anchor
+        + "\n\nCURRENT VISUAL DESIGN:\n"
+        + compressed_design_json
+    )
+    context_message = SystemMessage(content=system_content)
+
+    chat_model = _get_model()
+    response = chat_model.invoke([context_message, *history_messages])
+    if isinstance(response, str):
+        response_text = response
+    else:
+        response_text = response.content if isinstance(response.content, str) else str(response.content)
+
+    # Use direct patch if available, otherwise try to extract from model response
+    if direct_patch:
+        patch = direct_patch
+    else:
+        patch = _extract_permission_patch(response_text)
+        # Auto-fix modelId mismatches
+        if patch and intent:
+            tm = intent.get("target_model")
+            if tm:
+                target_id = tm["id"]
+                for op in patch.get("operations", []):
+                    op_model = op.get("modelId", "")
+                    if op_model and op_model != target_id:
+                        op["modelId"] = target_id
+
+    return response_text, patch
+
+
 def permission_assistant(state: PermissionState) -> dict[str, list[BaseMessage]]:
     context = state.get("context") or {}
     design = context.get("permission_design") or {}
     project = _get_project(design)
     messages = state.get("messages", [])
 
-    # --- Inline intent extraction ---
+    # --- Get latest user text ---
     latest_text = ""
     for msg in reversed(messages):
         if isinstance(msg, HumanMessage):
             latest_text = msg.content if isinstance(msg.content, str) else str(msg.content)
             break
 
-    intent = extract_intent(latest_text, design) if latest_text else {}
+    # --- Split multi-sentence requests ---
+    sentences = _split_multi_sentence_requests(latest_text) if latest_text else [latest_text]
 
-    # --- Build system prompt with intent anchor ---
-    intent_anchor = _build_intent_anchor(intent) if intent else ""
-    # Compress design JSON to fit within model context window (strip UI layout data)
+    # --- Compress design JSON once ---
     compressed_design = _compress_design_for_model(design)
     design_json = json.dumps(compressed_design, ensure_ascii=False, indent=2)
-
-    # Safety: if still too large, truncate to fit ~4000 chars (~1000 tokens)
     MAX_DESIGN_CHARS = 4000
     if len(design_json) > MAX_DESIGN_CHARS:
         design_json = design_json[:MAX_DESIGN_CHARS] + "\n...(truncated for length)"
 
-    system_content = (
-        SYSTEM_PROMPT
-        + "\n\n"
-        + intent_anchor
-        + "\n\nCURRENT VISUAL DESIGN:\n"
-        + design_json
-    )
-    context_message = SystemMessage(content=system_content)
+    # Truncate history
+    history_messages = _truncate_history(messages, MAX_HISTORY_TURNS)
 
-    # Truncate history to prevent context dilution
-    messages = _truncate_history(messages, MAX_HISTORY_TURNS)
+    # --- Process each sentence separately ---
+    all_patches: list[dict[str, Any]] = []
+    all_responses: list[str] = []
+    auto_fix_notes: list[str] = []
 
-    # Call model
-    chat_model = _get_model()
-    response = chat_model.invoke([context_message, *messages])
-    if isinstance(response, str):
-        response = AIMessage(content=response)
+    for sentence in sentences:
+        response_text, patch = _process_single_request(
+            sentence, design, project, history_messages, design_json
+        )
+        all_responses.append(response_text)
+        if patch:
+            all_patches.append(patch)
 
-    # --- Output validation (no retry, to keep response fast for local models) ---
-    patch_text = response.content if isinstance(response.content, str) else ""
-    patch = _extract_permission_patch(patch_text)
+    # --- Merge all patches into one ---
+    if all_patches:
+        merged_operations: list[dict[str, Any]] = []
+        seen_ops: set[tuple] = set()
+        for p in all_patches:
+            for op in p.get("operations", []):
+                op_key = (op.get("op"), op.get("roleId"), op.get("modelId"), op.get("operation"), op.get("value"))
+                if op_key not in seen_ops:
+                    seen_ops.add(op_key)
+                    merged_operations.append(op)
 
-    if patch and intent:
-        tm = intent.get("target_model")
-        if tm:
-            target_id = tm["id"]
-            # Auto-fix: correct modelId in all operations to match user's intent
-            fixed_ops: list[str] = []
-            for op in patch.get("operations", []):
-                op_model = op.get("modelId", "")
-                if op_model and op_model != target_id:
-                    fixed_ops.append(f"{op_model} -> {target_id}")
-                    op["modelId"] = target_id
+        merged_patch = {
+            "summary": f"Merged patch from {len(sentences)} request(s)",
+            "operations": merged_operations,
+        }
 
-            if fixed_ops:
-                # Rebuild the patch text with corrected modelId
-                corrected_patch_text = "```permission_patch\n" + json.dumps(patch, ensure_ascii=False, indent=2) + "\n```"
-                current_content = response.content if isinstance(response.content, str) else str(response.content)
-                cleaned_content = _remove_permission_patch(current_content)
-                fixes = "\n".join(f"  - {f}" for f in fixed_ops)
-                note = (
-                    "️ **已自动修正**: 模型生成的补丁目标模型有误，已自动修正为正确的模型。\n"
-                    f"- 用户请求的模型: {tm.get('id', 'unknown')} ({tm.get('display', '')})\n"
-                    f"- 修正内容:\n{fixes}\n\n"
-                    "---\n\n"
-                )
-                response = AIMessage(content=note + cleaned_content + "\n\n" + corrected_patch_text)
+        # Build final response
+        if len(sentences) > 1:
+            summary_parts = []
+            for i, sentence in enumerate(sentences):
+                summary_parts.append(f"请求 {i+1}: {sentence}")
+            header = "️ **多请求处理**: 检测到多个独立请求，已分别处理并合并。\n\n" + "\n".join(f"- {s}" for s in summary_parts) + "\n\n---\n\n"
+        else:
+            header = ""
+
+        merged_patch_text = "```permission_patch\n" + json.dumps(merged_patch, ensure_ascii=False, indent=2) + "\n```"
+        # Use the last response's text content (without its patch) as the explanation
+        last_response = all_responses[-1] if all_responses else ""
+        last_cleaned = _remove_permission_patch(last_response)
+        final_content = header + last_cleaned + "\n\n" + merged_patch_text
+        response = AIMessage(content=final_content)
+    else:
+        # No patches generated, just return the last response
+        response = AIMessage(content=all_responses[-1] if all_responses else "")
 
     return {"messages": [response]}
 
