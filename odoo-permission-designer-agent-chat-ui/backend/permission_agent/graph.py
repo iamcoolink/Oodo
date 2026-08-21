@@ -182,44 +182,38 @@ def _extract_target_model(
     models = project.get("models", [])
     display_map = _build_model_display(project)
 
-    # 0. Exact word-boundary match on model name/ID (highest priority)
-    #    e.g. "Users模型" -> must match model with name "Users" or id "users"
-    #    Uses word boundary \b to avoid substring false matches
+    # Strategy: find model names that appear right before model indicators
+    # like "模型", "model", "表". This avoids false matches from field names.
+    # e.g., "sales order模型的customer字段" → "sales order" is before "模型"
+    model_indicators = ["模型", "model", "表"]
+
+    # Build a list of (model, position_before_indicator, match_length) candidates
+    candidates: list[tuple[int, int, dict[str, str]]] = []
     for m in models:
         mid = m.get("id", "")
-        name = m.get("name", "")
-        tech = m.get("technicalName", "")
-        # Check exact model name with word boundary
-        if name and re.search(rf"\b{re.escape(name.lower())}\b", text_lower):
-            return {"id": mid, "display": display_map.get(mid, mid)}
-        # Check exact model ID with word boundary
-        if mid and re.search(rf"\b{re.escape(mid.lower())}\b", text_lower):
-            return {"id": mid, "display": display_map.get(mid, mid)}
-        # Check technical name with word boundary
-        if tech and re.search(rf"\b{re.escape(tech.lower())}\b", text_lower):
-            return {"id": mid, "display": display_map.get(mid, mid)}
-
-    # 1. Match by model ID (exact token match with word boundary)
-    for m in models:
-        mid = m.get("id", "")
-        if re.search(rf"\b{re.escape(mid)}\b", text_lower):
-            return {"id": mid, "display": display_map.get(mid, mid)}
-
-    # 2. Match by model name / technicalName — sort by name length descending
-    sorted_models = sorted(
-        models,
-        key=lambda m: max(len(m.get("name", "")), len(m.get("technicalName", ""))),
-        reverse=True,
-    )
-    for m in sorted_models:
         name = m.get("name", "").lower()
         tech = m.get("technicalName", "").lower()
-        if name and name in text_lower:
-            return {"id": m["id"], "display": display_map.get(m["id"], m["id"])}
-        if tech and tech in text_lower:
-            return {"id": m["id"], "display": display_map.get(m["id"], m["id"])}
 
-    # 3. Match by aliases (already sorted longest-first)
+        for search_name in [name, tech, mid]:
+            if not search_name:
+                continue
+            idx = text_lower.find(search_name)
+            while idx != -1:
+                after_idx = idx + len(search_name)
+                remainder = text_lower[after_idx:]
+                # Check if a model indicator follows immediately (with optional space)
+                for indicator in model_indicators:
+                    if remainder.lstrip().startswith(indicator):
+                        candidates.append((len(search_name), idx, {"id": mid, "display": display_map.get(mid, mid)}))
+                        break
+                idx = text_lower.find(search_name, idx + 1)
+
+    if candidates:
+        # Pick the longest match at the earliest position
+        candidates.sort(key=lambda x: (-x[0], x[1]))
+        return candidates[0][2]
+
+    # Fallback: alias matching (longest first)
     for phrase, mid in MODEL_ALIASES:
         if phrase in text_lower:
             model_exists = any(m.get("id") == mid for m in models)
@@ -288,15 +282,150 @@ def _extract_operations(user_text: str) -> list[str]:
     text_lower = user_text.lower()
     ops: list[str] = []
     op_map = {
-        "read": ["read", "可读", "读取", "读", "view", "read-only", "readonly", "查看"],
+        "read": ["read", "可读", "读取", "读", "view", "read-only", "readonly", "查看", "只读"],
         "create": ["create", "创建", "新增", "add", "新建", "建立"],
-        "write": ["write", "写入", "编辑", "modify", "修改", "edit", "写", "更改"],
+        "write": ["write", "写入", "编辑", "modify", "修改", "edit", "写", "更改", "可编辑", "editable"],
         "unlink": ["unlink", "delete", "删除", "remove", "移除", "删"],
     }
     for op, keywords in op_map.items():
         if any(kw in text_lower for kw in keywords):
             ops.append(op)
     return ops
+
+
+def _extract_target_fields(
+    user_text: str, project: dict[str, Any], target_model_id: str | None
+) -> list[dict[str, str]]:
+    """Extract which fields the user is referring to within a specific model."""
+    text_lower = user_text.lower()
+    fields: list[dict[str, str]] = []
+
+    if not target_model_id:
+        return fields
+
+    # Find the target model
+    target_model = None
+    for m in project.get("models", []):
+        if m.get("id") == target_model_id:
+            target_model = m
+            break
+    if not target_model:
+        return fields
+
+    # Extract the part after the model name to focus on field names only.
+    # This prevents model name words from being mistaken as field names.
+    # e.g., "customer Invoice模型里面的customer字段" → field_context = "customer字段"
+    field_context = text_lower
+    # Find model name in text and take everything after it
+    model_name = target_model.get("name", "").lower()
+    model_tech = target_model.get("technicalName", "").lower()
+    for name in [model_name, model_tech]:
+        if name and name in text_lower:
+            idx = text_lower.index(name) + len(name)
+            # Skip past common connectors like "模型", "的", "里面的"
+            remainder = text_lower[idx:]
+            skip_patterns = [
+                r"^模型里面的", r"^模型中的", r"^模型的", r"^模型", r"^的", r"^里面的",
+                r"^model's\s*", r"^model\s+", r"^'s\s*", r"^of\s+", r"^in\s+",
+            ]
+            for sp in skip_patterns:
+                m2 = re.match(sp, remainder)
+                if m2:
+                    remainder = remainder[m2.end():]
+                    break
+            field_context = remainder
+            break
+
+    # Match field names (longest first to avoid partial matches)
+    model_fields = target_model.get("fields", [])
+    sorted_fields = sorted(model_fields, key=lambda f: len(f.get("name", "")), reverse=True)
+
+    for f in sorted_fields:
+        fname = f.get("name", "").lower()
+        ftech = f.get("technicalName", "").lower()
+        fid = f.get("id", "")
+
+        if not fname and not ftech:
+            continue
+
+        # Use simple substring match within the field_context (after model name)
+        # No \b needed since we already isolated the field portion
+        matched = False
+        if fname and fname in field_context:
+            matched = True
+        if not matched and ftech and ftech in field_context:
+            matched = True
+
+        if matched:
+            fields.append({"id": fid, "name": f.get("name", ""), "technicalName": f.get("technicalName", "")})
+
+    return fields
+
+
+def _extract_field_access_level(user_text: str) -> str | None:
+    """Extract the desired field access level: readonly, editable, hidden, masked."""
+    text_lower = user_text.lower()
+
+    # Check in priority order (more specific first)
+    if any(kw in text_lower for kw in ["隐藏", "hidden", "不可见"]):
+        return "hidden"
+    if any(kw in text_lower for kw in ["掩码", "masked", "脱敏"]):
+        return "masked"
+    if any(kw in text_lower for kw in ["可编辑", "editable", "编辑", "修改", "写入", "write"]):
+        return "editable"
+    if any(kw in text_lower for kw in ["只读", "readonly", "read-only", "可读", "读取", "read"]):
+        return "readonly"
+
+    return None
+
+
+def _extract_per_field_access_levels(
+    user_text: str, target_fields: list[dict[str, str]]
+) -> dict[str, str] | None:
+    """Extract per-field access levels when different fields have different levels.
+
+    e.g., "Customer字段改成readonly和Payment Status字段改成Editable"
+    Returns: {"customer": "readonly", "payment status": "editable"}
+    Returns None if all fields share the same level (use _extract_field_access_level instead).
+    """
+    if len(target_fields) <= 1:
+        return None
+
+    text_lower = user_text.lower()
+    field_levels: dict[str, str] = {}
+
+    # Patterns: "字段A改成X和字段B改成Y" or "字段A改成X，字段B改成Y"
+    # Split by "和" or "，" or "," to find per-field segments
+    segments = re.split(r'和|，|,', text_lower)
+
+    for segment in segments:
+        seg_lower = segment.strip().lower()
+        # Determine access level for this segment
+        level = None
+        if any(kw in seg_lower for kw in ["隐藏", "hidden", "不可见"]):
+            level = "hidden"
+        elif any(kw in seg_lower for kw in ["掩码", "masked", "脱敏"]):
+            level = "masked"
+        elif any(kw in seg_lower for kw in ["可编辑", "editable", "编辑", "修改", "写入", "write"]):
+            level = "editable"
+        elif any(kw in seg_lower for kw in ["只读", "readonly", "read-only", "可读", "读取", "read"]):
+            level = "readonly"
+
+        if level:
+            # Find which fields are mentioned in this segment
+            for f in target_fields:
+                fname = f.get("name", "").lower()
+                ftech = f.get("technicalName", "").lower()
+                if fname and fname in seg_lower:
+                    field_levels[fname] = level
+                elif ftech and ftech in seg_lower:
+                    field_levels[ftech] = level
+
+    # Only return if we found different levels for different fields
+    if len(field_levels) > 1 and len(set(field_levels.values())) > 1:
+        return field_levels
+
+    return None
 
 
 def _extract_target_all_models(user_text: str) -> bool:
@@ -315,26 +444,59 @@ def _split_multi_sentence_requests(user_text: str) -> list[str]:
     Detects patterns like:
     - "取消角色A对全部模型的权限。取消角色B对全部模型的权限。"
     - "授予X权限。授予Y权限。"
+    - "授予A对B的权限，授予C对D的权限。"
+    - "将A模型字段改成X，B模型字段改成Y。" (different models in one sentence)
     """
-    # Split by Chinese period, English period, or newline
-    sentences = re.split(r'[。.\n]+', user_text)
+    # First, try to parse as JSON array (frontend may send structured messages)
+    # e.g., "[{'type': 'text', 'text': '...'}]"
+    user_text = user_text.strip()
+    if user_text.startswith('[') and user_text.endswith(']'):
+        try:
+            import ast
+            parsed = ast.literal_eval(user_text)
+            if isinstance(parsed, list) and len(parsed) == 1 and isinstance(parsed[0], dict):
+                # Extract text from single message object
+                user_text = parsed[0].get('text', user_text)
+        except Exception:
+            pass
+
+    # Split by Chinese period, Chinese comma, English period, comma, or newline
+    sentences = re.split(r'[。.,，\n]+', user_text)
     sentences = [s.strip() for s in sentences if s.strip()]
 
-    # Only split if there are multiple sentences AND each sentence contains
-    # a role-related keyword (indicating separate requests)
     if len(sentences) <= 1:
         return [user_text]
 
-    role_keywords = ["角色", "role", "manager", "accountant", "sales", "warehouse", "销售", "财务", "仓库"]
+    # Action keywords that indicate a new permission request
+    action_keywords = ["授予", "取消", "移除", "grant", "revoke", "deny", "remove", "allow", "禁止", "将"]
     multi_request_sentences = []
     for s in sentences:
         s_lower = s.lower()
-        if any(kw in s_lower for kw in role_keywords):
+        if any(kw in s_lower for kw in action_keywords):
             multi_request_sentences.append(s)
 
-    # If we found multiple role-related sentences, return them separately
+    # If we found multiple action-related sentences, return them separately
     if len(multi_request_sentences) > 1:
         return multi_request_sentences
+
+    # Also detect model-switching patterns within a single sentence.
+    # e.g., "Customer Invoice里的X字段改成Editable，Customer里面的Y字段改成Editable"
+    # The second clause starts with a model name followed by "里面的" or "里的" or "模型"
+    model_switch_pattern = re.compile(
+        r'(?:里面的|里的|模型里面的|模型中的|模型的|model\'s|model\s+in|of\s+)',
+        re.IGNORECASE
+    )
+    # Re-split and check if any clause (without action keyword) contains a model switch
+    has_model_switch = False
+    for s in sentences:
+        if not any(kw in s.lower() for kw in action_keywords):
+            if model_switch_pattern.search(s):
+                has_model_switch = True
+                break
+
+    if has_model_switch and len(sentences) > 1:
+        # Return all non-empty clauses as separate requests
+        return sentences
 
     return [user_text]
 
@@ -371,11 +533,55 @@ def extract_intent(
     target_roles = _extract_target_roles(user_text, project)
     operations = _extract_operations(user_text)
 
+    # Extract field-level information
+    target_model_id = target_model["id"] if target_model else None
+
+    # Check for "所有字段" (all fields) pattern
+    text_lower = user_text.lower()
+    all_fields_keywords = ["所有字段", "全部字段", "all fields", "every field"]
+    is_all_fields = any(kw in text_lower for kw in all_fields_keywords)
+
+    if is_all_fields:
+        # Expand to all fields of all relevant models
+        all_target_fields = []
+        if target_all_models:
+            # All models + all fields
+            for m in project.get("models", []):
+                for f in m.get("fields", []):
+                    all_target_fields.append({
+                        "id": f.get("id"),
+                        "name": f.get("name"),
+                        "technicalName": f.get("technicalName"),
+                        "_model_id": m.get("id"),
+                    })
+        elif target_model_id:
+            # Specific model + all fields
+            target_model_obj = next((m for m in project.get("models", []) if m.get("id") == target_model_id), None)
+            if target_model_obj:
+                for f in target_model_obj.get("fields", []):
+                    all_target_fields.append({
+                        "id": f.get("id"),
+                        "name": f.get("name"),
+                        "technicalName": f.get("technicalName"),
+                        "_model_id": target_model_id,
+                    })
+        target_fields = all_target_fields
+    else:
+        target_fields = _extract_target_fields(user_text, project, target_model_id)
+
+    field_access_level = _extract_field_access_level(user_text)
+
+    # Check for per-field access levels (e.g., "Customer改成readonly和Payment Status改成Editable")
+    per_field_levels = _extract_per_field_access_levels(user_text, target_fields) if target_fields and not is_all_fields else None
+
     return {
         "target_model": target_model,
         "target_all_models": target_all_models,
         "target_roles": target_roles,
         "operations": operations,
+        "target_fields": target_fields,
+        "field_access_level": field_access_level,
+        "per_field_levels": per_field_levels,
         "raw_text": user_text,
     }
 
@@ -634,8 +840,11 @@ def _build_patch_from_intent(intent: dict[str, Any], project: dict[str, Any]) ->
     target_model = intent.get("target_model")
     target_all_models = intent.get("target_all_models", False)
     operations = intent.get("operations", [])
+    target_fields = intent.get("target_fields", [])
+    field_access_level = intent.get("field_access_level")
+    per_field_levels = intent.get("per_field_levels")
 
-    if not target_roles or not operations:
+    if not target_roles:
         return None
 
     # Determine which models to operate on
@@ -651,29 +860,69 @@ def _build_patch_from_intent(intent: dict[str, Any], project: dict[str, Any]) ->
     is_cancel = any(kw in text_lower for kw in ["取消", "移除", "remove", "revoke", "deny", "禁止"])
     value = not is_cancel
 
-    # Build operations: for each role × each model × each operation
     ops: list[dict[str, Any]] = []
-    for role in target_roles:
-        for model_id in model_ids:
-            for op_name in operations:
-                ops.append({
-                    "op": "set_model_access",
-                    "roleId": role["id"],
-                    "modelId": model_id,
-                    "operation": op_name,
-                    "value": value,
-                })
 
-    action = "取消" if is_cancel else "授予"
+    # Handle field-level permissions if fields are specified
+    if target_fields and per_field_levels:
+        # Per-field access levels (different fields have different levels)
+        for role in target_roles:
+            for field in target_fields:
+                fname = field.get("name", "").lower()
+                ftech = field.get("technicalName", "").lower()
+                field_level = per_field_levels.get(fname) or per_field_levels.get(ftech) or field_access_level
+                if not field_level:
+                    continue
+                # Use field's _model_id if present (for all-models case), otherwise use model_ids
+                field_model_ids = [field["_model_id"]] if field.get("_model_id") else model_ids
+                for model_id in field_model_ids:
+                    ops.append({
+                        "op": "set_field_access",
+                        "roleId": role["id"],
+                        "modelId": model_id,
+                        "fieldId": field["id"],
+                        "value": field_level,
+                    })
+        field_names = ", ".join(f["name"] for f in target_fields)
+        action_desc = f"Set {field_names} field(s) with per-field levels"
+    elif target_fields and field_access_level:
+        for role in target_roles:
+            for field in target_fields:
+                field_model_ids = [field["_model_id"]] if field.get("_model_id") else model_ids
+                for model_id in field_model_ids:
+                    ops.append({
+                        "op": "set_field_access",
+                        "roleId": role["id"],
+                        "modelId": model_id,
+                        "fieldId": field["id"],
+                        "value": field_access_level,
+                    })
+        field_names = ", ".join(f["name"] for f in target_fields)
+        action_desc = f"Set {field_names} field(s) to {field_access_level}"
+    elif operations:
+        # Handle model-level permissions
+        for role in target_roles:
+            for model_id in model_ids:
+                for op_name in operations:
+                    ops.append({
+                        "op": "set_model_access",
+                        "roleId": role["id"],
+                        "modelId": model_id,
+                        "operation": op_name,
+                        "value": value,
+                    })
+        action = "Revoke" if is_cancel else "Grant"
+        action_desc = f"{action} {', '.join(operations)} permission(s)"
+    else:
+        return None
+
     role_names = ", ".join(r.get("name", r["id"]) for r in target_roles)
     if target_all_models:
-        model_desc = "全部模型"
+        model_desc = "all models"
     else:
-        model_desc = target_model.get("display", target_model["id"])
-    op_names = ", ".join(operations)
+        model_desc = target_model.get("display", target_model["id"]) if target_model else "unknown"
 
     return {
-        "summary": f"{action} {role_names} 对 {model_desc} 的 {op_names} 权限",
+        "summary": f"{action_desc} for {role_names} on {model_desc}",
         "operations": ops,
     }
 
@@ -708,6 +957,25 @@ def _process_single_request(
         response_text = response
     else:
         response_text = response.content if isinstance(response.content, str) else str(response.content)
+
+    # Filter out model refusal responses (local models sometimes output these)
+    refusal_patterns = [
+        "对不起，我无法",
+        "抱歉，我无法",
+        "I cannot continue",
+        "I'm unable to",
+        "I apologize",
+        "I'm sorry",
+        "I can't help",
+        "I cannot help",
+        "I cannot complete",
+        "I'm not able to",
+        "在当前",
+    ]
+    for pattern in refusal_patterns:
+        if pattern in response_text:
+            response_text = ""
+            break
 
     # Use direct patch if available, otherwise try to extract from model response
     if direct_patch:
@@ -772,7 +1040,7 @@ def permission_assistant(state: PermissionState) -> dict[str, list[BaseMessage]]
         seen_ops: set[tuple] = set()
         for p in all_patches:
             for op in p.get("operations", []):
-                op_key = (op.get("op"), op.get("roleId"), op.get("modelId"), op.get("operation"), op.get("value"))
+                op_key = (op.get("op"), op.get("roleId"), op.get("modelId"), op.get("fieldId"), op.get("operation"), op.get("value"))
                 if op_key not in seen_ops:
                     seen_ops.add(op_key)
                     merged_operations.append(op)
